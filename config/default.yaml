@@ -1,0 +1,34 @@
+# 음원 분리 파이프라인 기본 설정
+
+audio:
+  sample_rate: 44100        # 모델 입력 샘플레이트
+  channels: 2               # stereo
+  target_format: wav
+
+# 분할 추론 (Chunked Inference) + Overlap-Add
+inference:
+  model: htdemucs           # htdemucs | bs_roformer | mel_roformer
+  device: auto              # auto | cuda | cpu
+  chunk_seconds: 10.0       # 청크 길이(초)
+  overlap: 0.25             # 청크 간 겹침 비율 (0~1)
+  fade: hann                # 경계 크로스페이드 윈도우: hann | linear
+  batch_size: 1
+  stems: [vocals, instrumental]   # 추출할 stem
+
+# 재학습 (Fine-tuning)
+training:
+  epochs: 50
+  batch_size: 4
+  learning_rate: 1.0e-4
+  num_workers: 4
+  segment_seconds: 6.0      # 학습 세그먼트 길이
+  checkpoint_dir: models/checkpoints
+  resume_from: null         # 사전학습 가중치 경로
+  loss: l1                  # l1 | mse | sdr
+
+# 데이터 전처리
+data:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  normalize: true           # 라우드니스 정규화
+  denoise: false            # 노이즈 제거 적용 여부

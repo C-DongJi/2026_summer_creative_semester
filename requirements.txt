@@ -1,0 +1,30 @@
+# --- Core DL ---
+# PyTorch: GPU(CUDA) 빌드는 아래 index-url로 설치 권장
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
+torch>=2.1
+torchaudio>=2.1
+
+# --- Audio I/O & DSP ---
+soundfile>=0.12
+librosa>=0.10
+numpy>=1.24
+scipy>=1.11
+ffmpeg-python>=0.2        # MP3 등 디코딩 (시스템 ffmpeg 필요)
+
+# --- SOTA 음원 분리 모델 ---
+demucs>=4.0               # HTDemucs
+# BS-RoFormer / Mel-RoFormer
+# pip install git+https://github.com/lucidrains/BS-RoFormer.git
+
+# --- Training ---
+einops>=0.7
+tqdm>=4.66
+pyyaml>=6.0
+tensorboard>=2.15
+
+# --- Web UI ---
+gradio>=4.0
+# 또는: streamlit>=1.30
+
+# --- Dev ---
+pytest>=7.4

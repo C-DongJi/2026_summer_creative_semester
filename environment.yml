@@ -1,0 +1,12 @@
+# conda 가상환경 재현용
+# 생성: conda env create -f environment.yml
+# 활성화: conda activate changuihakgi
+name: changuihakgi
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - ffmpeg          # MP3 등 디코딩용 시스템 의존성
+  - pip
+  - pip:
+      - -r requirements.txt
