@@ -48,11 +48,18 @@ def save_audio(
     path: str | Path,
     waveform: torch.Tensor,
     sample_rate: int,
+    float32: bool = False,
 ) -> None:
-    """waveform[channels, samples]를 파일로 저장한다."""
+    """waveform[channels, samples]를 파일로 저장한다.
+
+    Args:
+        float32: True면 32-bit float WAV로 저장 (감산 유도 스템 등
+                 양자화 손실을 피해야 하는 학습 데이터용)
+    """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    torchaudio.save(str(path), waveform.cpu(), sample_rate)
+    kwargs = {"encoding": "PCM_F", "bits_per_sample": 32} if float32 else {}
+    torchaudio.save(str(path), waveform.cpu(), sample_rate, **kwargs)
 
 
 def _match_channels(waveform: torch.Tensor, target_channels: int) -> torch.Tensor:

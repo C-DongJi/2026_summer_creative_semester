@@ -1,34 +1,48 @@
-# 음원 분리 파이프라인 기본 설정
+# 음원 분리 파이프라인 기본 설정 (2026-07 재설계)
+# 상세 근거: docs/PIPELINE_DESIGN.md
 
 audio:
-  sample_rate: 44100        # 모델 입력 샘플레이트
+  sample_rate: 44100        # Kim Mel-Band RoFormer 고정 규격
   channels: 2               # stereo
-  target_format: wav
+
+model:
+  name: mel_band_roformer   # mel_band_roformer | bs_roformer | htdemucs(레거시 비교용)
+  # ZFTurbo MSST 체크아웃 경로 (scripts/setup_msst.sh 로 설치)
+  msst_dir: third_party/Music-Source-Separation-Training
+  # Kim 체크포인트의 원본 학습 config (MSST 동봉)
+  msst_config: third_party/Music-Source-Separation-Training/configs/KimberleyJensen/config_vocals_mel_band_roformer_kj.yaml
+  checkpoint: models/checkpoints/MelBandRoformer.ckpt
+  target_instrument: vocals # 단일 타깃 — 반주는 mixture - vocals 로 복원
 
 # 분할 추론 (Chunked Inference) + Overlap-Add
 inference:
-  model: htdemucs           # htdemucs | bs_roformer | mel_roformer
   device: auto              # auto | cuda | cpu
-  chunk_seconds: 10.0       # 청크 길이(초)
-  overlap: 0.25             # 청크 간 겹침 비율 (0~1)
-  fade: hann                # 경계 크로스페이드 윈도우: hann | linear
+  chunk_seconds: 8.0        # 352,800 샘플 = 모델 네이티브 학습 청크
+  overlap: 0.75             # step = chunk/4 (MSST num_overlap 4와 동일 규격)
+  fade: hann                # 경계 크로스페이드: hann | linear
   batch_size: 1
-  stems: [vocals, instrumental]   # 추출할 stem
 
-# 재학습 (Fine-tuning)
+# 재학습 (Fine-tuning) — 자체 루프(src/training/train.py)용.
+# 기본 경로는 MSST train.py 사용 권장 (docs/PIPELINE_DESIGN.md Mode 2 참고)
 training:
   epochs: 50
-  batch_size: 4
-  learning_rate: 1.0e-4
+  batch_size: 1
+  gradient_accumulation_steps: 8   # 실효 배치 = batch_size * accum (Roformer는 실효 배치 확보 필수)
+  learning_rate: 1.0e-5            # 불안정하면 5e-6
   num_workers: 4
-  segment_seconds: 6.0      # 학습 세그먼트 길이
+  segment_seconds: 3.0             # 8GB VRAM 기준(~131k 샘플). 16GB면 8.0
+  use_amp: true
   checkpoint_dir: models/checkpoints
-  resume_from: null         # 사전학습 가중치 경로
-  loss: l1                  # l1 | mse | sdr
+  resume_from: models/checkpoints/MelBandRoformer.ckpt
+  loss: multi_stft                 # multi_stft(체크포인트 원 손실) | l1 | mse
+  # multi-res STFT loss 규격 (체크포인트 학습 당시와 동일하게 유지할 것)
+  multi_stft_windows: [4096, 2048, 1024, 512, 256]
+  multi_stft_hop: 147
 
 # 데이터 전처리
 data:
-  raw_dir: data/raw
-  processed_dir: data/processed
-  normalize: true           # 라우드니스 정규화
-  denoise: false            # 노이즈 제거 적용 여부
+  raw_dir: data/raw                # <곡명>/{mix.*, inst.*}
+  processed_dir: data/processed    # <곡명>/{vocals.wav, other.wav}  (MSST dataset_type 4)
+  valid_dir: data/valid            # 홀드아웃 검증셋 (>=5곡, 장르 다양하게)
+  normalize: true                  # 공통 게인 정규화 (mix/inst에 '동일' 게인 — 개별 정규화 금지)
+  target_peak: 0.95

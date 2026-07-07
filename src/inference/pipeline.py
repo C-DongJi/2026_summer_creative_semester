@@ -1,7 +1,10 @@
-"""추론 파이프라인.
+"""추론 파이프라인 (Mode 1).
 
-[입력/전처리 -> 청크 분할 추론 -> Overlap-Add 병합 -> 최종 출력]의
-전체 흐름을 묶는다. (설계서 Mode 1: 실시간 추론 파이프라인)
+[입력/전처리 -> 청크 분할 추론 -> Overlap-Add 병합 -> 감산 복원 -> 출력]
+
+주력 모델(Mel-Band RoFormer, Kim)은 단일 타깃(vocals) 모델이므로
+반주는 instrumental = mixture − vocals 감산으로 정확히 복원한다.
+(MSST inference.py의 --extract_instrumental 패턴과 동일)
 """
 from __future__ import annotations
 
@@ -22,16 +25,16 @@ class SeparationPipeline:
     def __init__(self, cfg: Config):
         self.cfg = cfg
         self.device = get_device(cfg.inference.device)
-        self.model = load_model(cfg.inference.model, device=self.device)
+        self.model = load_model(cfg.model, device=self.device)
         self.sample_rate = cfg.audio.sample_rate
 
     def separate(self, input_path: str | Path) -> dict[str, torch.Tensor]:
-        """오디오 파일을 stem별로 분리한다.
+        """오디오 파일을 vocals / instrumental로 분리한다.
 
         Returns:
-            {stem 이름: waveform[channels, samples]}
+            {"vocals": [C, T], "instrumental": [C, T]}
         """
-        waveform, sr = load_audio(
+        mixture, sr = load_audio(
             input_path,
             target_sr=self.sample_rate,
             target_channels=self.cfg.audio.channels,
@@ -39,15 +42,14 @@ class SeparationPipeline:
 
         chunk_samples = int(self.cfg.inference.chunk_seconds * sr)
         estimates = chunked_inference(
-            waveform,
+            mixture,
             process_fn=self._model_forward,
             chunk_samples=chunk_samples,
             overlap=self.cfg.inference.overlap,
             fade=self.cfg.inference.fade,
             device=self.device,
         )
-        # estimates: [stems, channels, samples] 가정
-        return self._to_stem_dict(estimates)
+        return self._to_stem_dict(estimates, mixture)
 
     def separate_to_files(
         self, input_path: str | Path, output_dir: str | Path
@@ -64,12 +66,25 @@ class SeparationPipeline:
         return paths
 
     def _model_forward(self, chunk: torch.Tensor) -> torch.Tensor:
-        """모델에 청크를 통과시킨다 (배치 차원 추가/제거 처리)."""
+        """모델에 청크를 통과시킨다 (배치 차원 추가/제거)."""
         with torch.no_grad():
-            out = self.model(chunk.unsqueeze(0))  # [1, stems, channels, samples]
+            out = self.model(chunk.unsqueeze(0))
+        # 단일 타깃: [1, C, T] / 멀티 스템: [1, S, C, T]
         return out.squeeze(0)
 
-    def _to_stem_dict(self, estimates: torch.Tensor) -> dict[str, torch.Tensor]:
-        """모델 출력 stem 순서를 설정의 stem 이름과 매핑한다."""
-        sources = getattr(self.model, "sources", None) or self.cfg.inference.stems
-        return {name: estimates[i] for i, name in enumerate(sources)}
+    def _to_stem_dict(
+        self, estimates: torch.Tensor, mixture: torch.Tensor
+    ) -> dict[str, torch.Tensor]:
+        """모델 출력 -> {stem 이름: waveform}. 단일 타깃이면 감산으로 반주 복원."""
+        if estimates.dim() == 2:  # [C, T] — 단일 타깃(vocals) 모델
+            vocals = estimates
+            return {"vocals": vocals, "instrumental": mixture - vocals}
+
+        # [S, C, T] — 멀티 스템 모델 (htdemucs 레거시 등)
+        sources = getattr(self.model, "sources", None)
+        if sources:
+            stems = {name: estimates[i] for i, name in enumerate(sources)}
+            if "vocals" in stems and "instrumental" not in stems:
+                stems["instrumental"] = mixture - stems["vocals"]
+            return stems
+        return {f"stem_{i}": estimates[i] for i in range(estimates.shape[0])}

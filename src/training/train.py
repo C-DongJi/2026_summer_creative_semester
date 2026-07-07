@@ -1,38 +1,31 @@
-"""재학습(Fine-tuning) 루프 (담당: 이준영).
+"""자체 재학습(Fine-tuning) 루프 (담당: 이준영).
 
-사전학습 가중치를 불러온 뒤 커스텀 데이터로 가중치를 업데이트한다.
-(설계서 Mode 2: 커스텀 재학습 파이프라인 - 학습 루프)
+창의학기제 학습 목표(학습 루프 직접 설계·구현)를 위한 경량 구현.
+검증된 기본 경로는 MSST train.py 사용 — docs/PIPELINE_DESIGN.md Mode 2 참고.
 
-NOTE: 모델별 forward/출력 stem 인덱스가 다르므로 _compute_loss는
-      실제 모델 통합 시 조정이 필요하다. 현재는 골격 구현.
+구성: 단일 타깃(vocals) 학습
+  - 모델 입력: mixture [B, C, T] -> 출력: vocals 추정 [B, C, T]
+  - 손실: multi-resolution STFT (체크포인트 원 손실 유지)
+  - VRAM 절감: AMP(mixed precision) + gradient accumulation
 """
 from __future__ import annotations
 
 from pathlib import Path
 
 import torch
-import torch.nn.functional as F
 from tqdm import tqdm
 
 from src.models.registry import load_model
 from src.training.dataset import build_dataloader
+from src.training.losses import build_loss
 from src.utils.config import Config
 from src.utils.device import get_device
-
-LOSS_FNS = {
-    "l1": F.l1_loss,
-    "mse": F.mse_loss,
-}
 
 
 def train(cfg: Config) -> None:
     """설정에 따라 Fine-tuning을 수행한다."""
     device = get_device(cfg.inference.device)
-    model = load_model(
-        cfg.inference.model,
-        checkpoint=cfg.training.resume_from,
-        device=device,
-    )
+    model = load_model(cfg.model, device=device)
     model.train()
 
     loader = build_dataloader(
@@ -44,40 +37,50 @@ def train(cfg: Config) -> None:
         num_workers=cfg.training.num_workers,
     )
 
-    optimizer = torch.optim.AdamW(
-        model.parameters(), lr=cfg.training.learning_rate
-    )
-    loss_fn = LOSS_FNS.get(cfg.training.loss, F.l1_loss)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.training.learning_rate)
+    loss_fn = build_loss(cfg.training.loss, cfg).to(device)
+    accum = max(1, cfg.training.gradient_accumulation_steps)
+    use_amp = bool(cfg.training.use_amp) and device.type == "cuda"
+    scaler = torch.amp.GradScaler(enabled=use_amp)
+
     ckpt_dir = Path(cfg.training.checkpoint_dir)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     for epoch in range(1, cfg.training.epochs + 1):
         running = 0.0
+        optimizer.zero_grad()
         pbar = tqdm(loader, desc=f"epoch {epoch}/{cfg.training.epochs}")
-        for batch in pbar:
-            mix = batch["mix"].to(device)
-            loss = _compute_loss(model, mix, batch, loss_fn, device)
+        for step, batch in enumerate(pbar, start=1):
+            mixture = batch["mixture"].to(device)
+            vocals = batch["vocals"].to(device)
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            with torch.autocast(device_type=device.type, enabled=use_amp):
+                est = _forward_vocals(model, mixture)
+                loss = loss_fn(est, vocals) / accum
 
-            running += loss.item()
-            pbar.set_postfix(loss=loss.item())
+            scaler.scale(loss).backward()
+            if step % accum == 0:
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad()
+
+            running += loss.item() * accum
+            pbar.set_postfix(loss=f"{loss.item() * accum:.4f}")
 
         avg = running / max(1, len(loader))
         print(f"[epoch {epoch}] avg loss = {avg:.4f}")
-        _save_checkpoint(model, ckpt_dir / f"finetune_epoch{epoch}.pth", epoch)
+        _save_checkpoint(model, ckpt_dir / f"finetune_epoch{epoch}.ckpt", epoch)
 
 
-def _compute_loss(model, mix, batch, loss_fn, device) -> torch.Tensor:
-    """모델 출력과 타깃(stem) 간 손실. (모델 통합 시 stem 인덱스 조정 필요)"""
-    est = model(mix)  # [B, stems, C, T] 가정
-    # 예시: 첫 stem을 vocals로 본다. 실제 모델 stem 순서에 맞춰 수정할 것.
-    vocals_target = batch["vocals"].to(device)
-    est_vocals = est[:, 0]
-    return loss_fn(est_vocals, vocals_target)
+def _forward_vocals(model: torch.nn.Module, mixture: torch.Tensor) -> torch.Tensor:
+    """모델 출력을 vocals 추정 [B, C, T]로 정규화한다."""
+    est = model(mixture)
+    if est.dim() == 4:  # [B, S, C, T] 멀티 스템 출력 — vocals 스템 선택
+        sources = getattr(model, "sources", None)
+        idx = sources.index("vocals") if sources and "vocals" in sources else 0
+        est = est[:, idx]
+    return est
 
 
-def _save_checkpoint(model, path: Path, epoch: int) -> None:
+def _save_checkpoint(model: torch.nn.Module, path: Path, epoch: int) -> None:
     torch.save({"epoch": epoch, "state_dict": model.state_dict()}, path)

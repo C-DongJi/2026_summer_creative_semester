@@ -12,9 +12,13 @@ venv/
 # Data & model weights (대용량 - 버전관리 제외)
 data/raw/*
 data/processed/*
+data/valid/*
 models/checkpoints/*
 outputs/*
 !**/.gitkeep
+
+# 외부 프레임워크 체크아웃 (scripts/setup_msst.sh 로 재현)
+third_party/
 
 # Audio files
 *.wav

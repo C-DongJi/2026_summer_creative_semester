@@ -26,7 +26,7 @@ def main() -> None:
 
     cfg = load_config(args.config)
     if args.model:
-        cfg["inference"]["model"] = args.model
+        cfg["model"]["name"] = args.model
 
     pipeline = SeparationPipeline(cfg)
     paths = pipeline.separate_to_files(args.input, args.output)
