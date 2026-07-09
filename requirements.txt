@@ -4,14 +4,14 @@
 # CPU 전용(파이프라인 개발/테스트):
 #   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
 torch>=2.1
-torchaudio>=2.1
+torchaudio>=2.1            # 리샘플(functional.resample)에만 사용 — I/O는 soundfile
 
 # --- Audio I/O & DSP ---
-soundfile>=0.12
-librosa>=0.10
+soundfile>=0.12           # 오디오 load/save 기본 백엔드 (libsndfile: wav/flac/ogg/mp3)
+librosa>=0.10             # MoisesDB 패키지가 내부적으로 사용
 numpy>=1.24
 scipy>=1.11
-# MP3 디코딩에 시스템 ffmpeg 필요 (conda: environment.yml에 포함)
+# MP3 등 일부 포맷 디코딩에 시스템 ffmpeg 권장 (conda: environment.yml에 포함)
 
 # --- 모델/학습 프레임워크 ---
 # 주력 모델(Mel-Band RoFormer)은 MSST 체크아웃으로 로드:
@@ -20,7 +20,14 @@ einops>=0.7
 tqdm>=4.66
 pyyaml>=6.0
 tensorboard>=2.15
-# demucs>=4.0   # 레거시 HTDemucs 비교 실험 시에만
+# demucs>=4.0             # 레거시 HTDemucs 비교 실험 시에만
+
+# --- 공개 데이터셋 인제스트 (파인튜닝 데이터 준비 시에만 설치) ---
+# MoisesDB: PyPI 미배포 → git에서 설치. 데이터는 music.ai/research 에서 별도 다운로드.
+#   pip install git+https://github.com/moises-ai/moises-db.git
+# MedleyDB: 데이터는 Zenodo 승인 요청 후 다운로드, MEDLEYDB_PATH 환경변수 설정.
+#   pip install medleydb
+# 두 데이터셋 모두 CC BY-NC-SA (비상업 연구용) — docs/DATASETS.md 참고.
 
 # --- Web UI ---
 gradio>=4.0
