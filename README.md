@@ -40,13 +40,15 @@ creative_semester/
 ├── models/checkpoints/       # Kim 시작 체크포인트 + 파인튜닝 결과
 ├── third_party/              # MSST 체크아웃 (gitignore, 스크립트로 재현)
 ├── src/
-│   ├── audio/                # I/O(io.py), 청크+Overlap-Add(chunking.py)
+│   ├── audio/                # I/O(io.py, soundfile 기반), 청크+Overlap-Add(chunking.py)
 │   ├── models/registry.py    # Mel-Band RoFormer 로딩 (MSST 경유)
 │   ├── inference/pipeline.py # Mode 1: 추론 파이프라인
 │   ├── training/             # Mode 2: 전처리·Dataset·손실·자체 학습 루프
+│   ├── data/                 # 공개 데이터셋 인제스트 (MoisesDB/MedleyDB -> 2-stem)
 │   └── utils/
 ├── app/webui.py              # Gradio Web UI
-├── scripts/                  # setup_msst / separate / prepare_data / train
+├── scripts/                  # setup_msst / separate / verify_oom_chunking
+│                             # prepare_data / prepare_dataset / check_dataset / train
 └── tests/
 ```
 
@@ -56,8 +58,15 @@ creative_semester/
 # 추론 (보컬/반주 분리)
 python scripts/separate.py --input song.mp3 --output outputs/
 
-# 데이터 전처리: (mix, inst) 쌍 -> MSST 학습 레이아웃
+# 2·3주차 검증 (GPU): 베이스라인 OOM vs 청크 추론 비교 — docs/COLAB.md 참고
+python scripts/verify_oom_chunking.py --minutes 4
+
+# 데이터 전처리 A: 운영자 수집 (mix, inst) 쌍 -> MSST 학습 레이아웃
 python scripts/prepare_data.py --config config/default.yaml
+
+# 데이터 전처리 B: 공개 데이터셋(MoisesDB/MedleyDB) -> 2-stem — docs/DATASETS.md 참고
+python scripts/prepare_dataset.py --dataset moisesdb --src /data/moisesdb_v0.1
+python scripts/check_dataset.py --dir data/processed   # 학습셋 점검(필수)
 
 # 파인튜닝 A: MSST train.py (검증된 기본 경로 — 명령어는 설계 문서 Mode 2 참고)
 # 파인튜닝 B: 자체 학습 루프 (창의학기제 학습 목표)
@@ -77,13 +86,15 @@ python -m pytest tests/ -v
 
 ## 진행 일정
 
-| 주차 | 일시 | 내용 |
-|------|------|------|
-| 1 | 6/26 | SOTA 논문 리뷰 / 오픈소스 아키텍처·메모리 한계 분석 |
-| 2 | 6/29 | 로컬 환경 세팅 / 베이스라인 구동 / OOM 한계 테스트 |
-| 3 | 7/6  | 분할 추론 아키텍처 설계 / 크로스페이드(Overlap-Add) 구현 ✅ + SOTA 재조사·파이프라인 재설계 ✅ |
-| 4 | 7/13 | 오디오 I/O 모듈 / Kim 체크포인트 1차 추론 파이프라인 완성 |
-| 5 | 7/20 | 커스텀 데이터 전처리 / Dataset·DataLoader |
-| 6 | 7/27 | Fine-tuning (MSST + 자체 루프) / 홀드아웃 SDR 검증 |
-| 7 | 8/3  | Web UI 개발 / 백엔드 연동 |
-| 8 | 8/7  | 통합 디버깅 / 문서화·최종 보고서 |
+> 재설계로 순서가 재배치되었고, GPU 필요 작업은 클라우드/연구실 서버에서 진행합니다.
+> 상세 실행 계획: **[docs/SCHEDULE.md](docs/SCHEDULE.md)**
+
+| 주차 | 일시 | 내용 | 상태 |
+|------|------|------|------|
+| 1 | 6/26 | SOTA 재조사 / 모델 선정(Mel-Band RoFormer) / 파이프라인 재설계 | ✅ 완료 |
+| 3 | 7/6  | 분할 추론 + 크로스페이드(Overlap-Add) 알고리즘 구현·테스트 | ✅ 완료 (실모델 검증은 GPU 세션) |
+| 2 | 7/13 | 로컬 I/O 검증 + **GPU①: 베이스라인 OOM 테스트 + 청크 로직 실증** | ⬜ 예정 |
+| 5 | 7/20 | 커스텀 데이터 전처리 / Dataset·DataLoader (로컬) | ⬜ 예정 |
+| 6 | 7/27 | **GPU②: Fine-tuning** (MSST + 자체 루프) / 홀드아웃 SDR 검증 | ⬜ 예정 |
+| 7 | 8/3  | Web UI 개발 / 백엔드 연동 (로컬) | ⬜ 예정 |
+| 8 | 8/7  | 통합 디버깅 / 문서화·최종 보고서 | ⬜ 예정 |
