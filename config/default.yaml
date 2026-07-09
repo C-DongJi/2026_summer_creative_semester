@@ -41,8 +41,18 @@ training:
 
 # 데이터 전처리
 data:
-  raw_dir: data/raw                # <곡명>/{mix.*, inst.*}
-  processed_dir: data/processed    # <곡명>/{vocals.wav, other.wav}  (MSST dataset_type 4)
+  raw_dir: data/raw                # 운영자 수집: <곡명>/{mix.*, inst.*}
+  processed_dir: data/processed    # 학습셋: <곡명>/{vocals.wav, other.wav} (MSST dataset_type 4)
   valid_dir: data/valid            # 홀드아웃 검증셋 (>=5곡, 장르 다양하게)
   normalize: true                  # 공통 게인 정규화 (mix/inst에 '동일' 게인 — 개별 정규화 금지)
   target_peak: 0.95
+
+# 공개 멀티 스템 데이터셋 (파인튜닝용) — 보컬/반주 2-stem으로 접어서 사용.
+# 준비: scripts/prepare_dataset.py, 점검: scripts/check_dataset.py. 상세: docs/DATASETS.md
+# ⚠️ 두 데이터셋 모두 CC BY-NC-SA (비상업 연구용) — 파인튜닝 결과물의 용도에 영향.
+public_datasets:
+  moisesdb_dir: null               # MoisesDB 압축해제 경로 (예: /data/moisesdb_v0.1)
+  medleydb_versions: [V1, V2]      # MedleyDB 버전 (경로는 MEDLEYDB_PATH 환경변수)
+  medleydb_include_speech: false   # true면 speaker/crowd도 보컬로 취급
+  medleydb_drop_bleed: true        # has_bleed(누화) 트랙 제외로 깨끗한 타깃 확보
+  holdout_frac: 0.1                # 검증셋 분리 비율
