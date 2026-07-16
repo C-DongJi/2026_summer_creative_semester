@@ -13,6 +13,22 @@ def test_fade_window_length():
     assert w.shape[0] == 100
 
 
+def test_input_shorter_than_chunk():
+    # 짧은 클립(5초) + 긴 청크(8초): 반사 패딩 클램프가 동작해야 함
+    torch.manual_seed(0)
+    waveform = torch.randn(2, 44100 * 5)
+
+    out = chunked_inference(
+        waveform,
+        process_fn=lambda c: c.unsqueeze(0),
+        chunk_samples=44100 * 8,
+        overlap=0.75,
+    )
+    recon = out.squeeze(0)
+    assert recon.shape == waveform.shape
+    assert torch.allclose(recon, waveform, atol=1e-4)
+
+
 def test_identity_reconstruction():
     # 임의의 stereo 신호
     torch.manual_seed(0)
