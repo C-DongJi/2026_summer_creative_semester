@@ -33,16 +33,28 @@
 import torch; print("CUDA:", torch.cuda.is_available(), "|", torch.cuda.get_device_name(0))
 ```
 
-**③ VS Code 터널 실행** (셀 — 이 셀은 계속 돌게 둔다):
-```python
-!curl -Lk 'https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64' --output vscode_cli.tar.gz
-!tar -xf vscode_cli.tar.gz
-!./code tunnel --accept-server-license-terms --name colab-gpu
+**③ Colab 터미널 열기**
+- **Colab Pro**: 하단(또는 좌측) 툴바의 **터미널 아이콘** 클릭.
+- **무료 티어** (터미널 버튼 없음): 셀에서 colab-xterm으로 터미널을 띄운다:
+  ```python
+  !pip install -q colab-xterm
+  %load_ext colabxterm
+  %xterm
+  ```
+  → 셀 출력 영역에 터미널이 뜬다.
+
+**④ 터미널에서 VS Code 터널 실행** (셀 아님, 터미널에 붙여넣기):
+```bash
+curl -Lk 'https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64' -o vscode_cli.tar.gz \
+  && tar -xf vscode_cli.tar.gz \
+  && ./code tunnel --accept-server-license-terms --name colab-gpu
 ```
+(리포를 이미 clone했다면 `bash scripts/colab_tunnel.sh` 한 줄로 동일)
 - 실행하면 `https://github.com/login/device` 주소와 8자리 코드가 출력된다.
   그 주소로 가서 코드를 입력해 GitHub 로그인 → 터널이 등록된다.
 - 이후 `vscode.dev/tunnel/colab-gpu/...` 링크도 출력된다.
-- **이 셀은 종료하지 말 것** (터널이 살아있어야 함).
+- **이 터미널(프로세스)은 종료하지 말 것** (터널이 살아있어야 함).
+  노트북 셀은 이제 자유롭게 쓸 수 있고, 브라우저 탭은 열어둘 것(세션 유지).
 
 ---
 
