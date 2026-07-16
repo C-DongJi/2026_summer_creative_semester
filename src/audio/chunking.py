@@ -79,7 +79,8 @@ def chunked_inference(
 
     # 페이드 윈도우가 경계에서 0이 되어 음원의 맨 앞/뒤가 묻히는(weight≈0) 것을
     # 막기 위해 양 끝을 chunk_samples만큼 반사 패딩한 뒤, 마지막에 잘라낸다.
-    pad = chunk_samples
+    # (반사 패딩은 입력 길이 미만이어야 하므로 짧은 입력은 클램프)
+    pad = min(chunk_samples, orig_total - 1)
     waveform = torch.nn.functional.pad(waveform, (pad, pad), mode="reflect")
     total = waveform.shape[-1]
 
