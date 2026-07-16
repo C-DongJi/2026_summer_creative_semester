@@ -33,28 +33,36 @@
 import torch; print("CUDA:", torch.cuda.is_available(), "|", torch.cuda.get_device_name(0))
 ```
 
-**③ Colab 터미널 열기**
-- **Colab Pro**: 하단(또는 좌측) 툴바의 **터미널 아이콘** 클릭.
-- **무료 티어** (터미널 버튼 없음): 셀에서 colab-xterm으로 터미널을 띄운다:
-  ```python
-  !pip install -q colab-xterm
-  %load_ext colabxterm
-  %xterm
-  ```
-  → 셀 출력 영역에 터미널이 뜬다.
+**③ 터널을 셀에서 백그라운드로 실행** (권장 — Colab 터미널 불필요):
 
-**④ 터미널에서 VS Code 터널 실행** (셀 아님, 터미널에 붙여넣기):
+> Colab 터미널(xterm)은 붙여넣기가 깨지는 경우가 많다(bracketed paste 문제).
+> 터널은 셀에서 nohup 백그라운드로 띄우고, 이후 작업은 전부
+> 접속된 VS Code의 통합 터미널(붙여넣기 정상)에서 하는 것이 안정적이다.
+
+```python
+# 셀 1: 터널 백그라운드 실행 (셀이 점유되지 않음)
+!wget -q https://raw.githubusercontent.com/C-DongJi/2026_summer_creative_semester/leejy/scripts/colab_tunnel.sh -O /content/tunnel.sh
+!nohup bash /content/tunnel.sh > /content/tunnel.log 2>&1 &
+```
+```python
+# 셀 2: 몇 초 뒤 실행 — 인증 코드 확인
+import time; time.sleep(8)
+!tail -20 /content/tunnel.log
+```
+- 출력의 `github.com/login/device` 주소에서 8자리 코드 입력(GitHub 인증).
+- 셀 2를 다시 실행해 `vscode.dev/tunnel/colab-gpu/...` 링크가 보이면 터널 가동 중.
+- 터널은 백그라운드 프로세스라 셀은 자유롭게 쓸 수 있고, 브라우저 탭은 열어둘 것(세션 유지).
+
+<details><summary>대안: Colab 터미널(Pro 터미널/colab-xterm)에서 직접 실행</summary>
+
+터미널 붙여넣기가 정상인 환경이면 아래 한 줄로도 된다 (`!` 없이 — `!`는 셀 전용):
 ```bash
 curl -Lk 'https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64' -o vscode_cli.tar.gz \
   && tar -xf vscode_cli.tar.gz \
   && ./code tunnel --accept-server-license-terms --name colab-gpu
 ```
-(리포를 이미 clone했다면 `bash scripts/colab_tunnel.sh` 한 줄로 동일)
-- 실행하면 `https://github.com/login/device` 주소와 8자리 코드가 출력된다.
-  그 주소로 가서 코드를 입력해 GitHub 로그인 → 터널이 등록된다.
-- 이후 `vscode.dev/tunnel/colab-gpu/...` 링크도 출력된다.
-- **이 터미널(프로세스)은 종료하지 말 것** (터널이 살아있어야 함).
-  노트북 셀은 이제 자유롭게 쓸 수 있고, 브라우저 탭은 열어둘 것(세션 유지).
+붙여넣기가 `^[[200~` 등으로 깨지면 `bind 'set enable-bracketed-paste on'` 입력 후 재시도.
+</details>
 
 ---
 
@@ -120,7 +128,8 @@ python scripts/separate.py --input outputs/song.mp3 --output outputs/
 - **세션 제한**: 무료 티어는 유휴 ~90분/최대 ~12시간 후 끊김. 끊기면 3장부터 다시.
 - **디스크 초기화**: 런타임이 끊기면 clone·다운로드한 것이 사라진다. 체크포인트를
   구글 드라이브에 저장해두면 재다운로드를 아낄 수 있다 (부록 A).
-- **터널 셀**: `./code tunnel` 셀이 멈추면 연결이 끊긴다. 계속 실행 상태로 유지.
+- **터널 프로세스**: 백그라운드 터널이 죽으면 연결이 끊긴다.
+  상태 확인: 셀에서 `!tail -5 /content/tunnel.log` / 재시작: 셀 1 다시 실행.
 
 ---
 
