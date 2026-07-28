@@ -1,4 +1,5 @@
 # MSST 경로 A 파인튜닝 config — Kim Mel-Band RoFormer 기반
+# [창의학기제 6주차 (7/27) 산출물 — Fine-tuning 환경 모듈화]
 #
 # 원본: third_party/.../configs/KimberleyJensen/config_vocals_mel_band_roformer_kj.yaml
 # 변경: training 하이퍼파라미터만 (T4/8GB급 VRAM 프리셋). model/audio 섹션은
