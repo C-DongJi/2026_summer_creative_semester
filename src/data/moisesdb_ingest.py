@@ -15,17 +15,22 @@ from pathlib import Path
 
 import torch
 
-from src.data.ingest_common import pad_and_sum, to_stereo_tensor
+from src.data.ingest_common import matches_genre, pad_and_sum, to_stereo_tensor
 
 
 def iter_moisesdb_pairs(
     data_path: str | Path,
     sample_rate: int = 44100,
     channels: int = 2,
+    genres: list[str] | None = None,
 ) -> Iterator[tuple[str, torch.Tensor, torch.Tensor]]:
     """MoisesDB의 각 트랙에서 (트랙명, vocals[C,T], other[C,T])를 순회.
 
     보컬이 없는 트랙은 건너뛴다.
+
+    Args:
+        genres: 지정 시 해당 장르 트랙만 (data.json의 genre 메타데이터,
+                부분 일치). 예: ["rock", "pop"]. MoisesDB는 12개 장르 보유.
     """
     try:
         from moisesdb.dataset import MoisesDB
@@ -38,6 +43,10 @@ def iter_moisesdb_pairs(
 
     db = MoisesDB(data_path=str(data_path), sample_rate=sample_rate)
     for track in db:
+        # 장르 필터 (오디오 로드 전, metadata 기반)
+        if not matches_genre(getattr(track, "genre", None), genres):
+            continue
+
         # 보컬 없는 트랙은 오디오 로드 전에 건너뜀 (metadata 기반)
         sources = getattr(track, "sources", None)
         if sources is not None and "vocals" not in sources:
