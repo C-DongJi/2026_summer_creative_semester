@@ -27,6 +27,7 @@ from src.audio.io import load_audio
 from src.data.ingest_common import (
     VOICE_LABELS_SINGING,
     VOICE_LABELS_SPEECH,
+    matches_genre,
     pad_and_sum,
 )
 
@@ -37,6 +38,7 @@ def iter_medleydb_pairs(
     drop_bleed: bool = True,
     sample_rate: int = 44100,
     channels: int = 2,
+    genres: list[str] | None = None,
 ) -> Iterator[tuple[str, torch.Tensor, torch.Tensor]]:
     """MedleyDB의 각 트랙에서 (트랙명, vocals[C,T], other[C,T])를 순회.
 
@@ -44,6 +46,7 @@ def iter_medleydb_pairs(
         versions: ['V1'], ['V1','V2'] 등. None이면 ['V1','V2'].
         include_speech: True면 speaker/crowd도 보컬로 취급.
         drop_bleed: True면 has_bleed 트랙 제외.
+        genres: 지정 시 해당 장르 트랙만 (metadata genre, 부분 일치).
     """
     try:
         import medleydb
@@ -63,6 +66,8 @@ def iter_medleydb_pairs(
         if getattr(mtrack, "is_instrumental", False):
             continue
         if drop_bleed and getattr(mtrack, "has_bleed", False):
+            continue
+        if not matches_genre(getattr(mtrack, "genre", None), genres):
             continue
 
         vocal_stems: list[torch.Tensor] = []
