@@ -1,0 +1,93 @@
+# MSST 경로 A 파인튜닝 config — Kim Mel-Band RoFormer 기반
+#
+# 원본: third_party/.../configs/KimberleyJensen/config_vocals_mel_band_roformer_kj.yaml
+# 변경: training 하이퍼파라미터만 (T4/8GB급 VRAM 프리셋). model/audio 섹션은
+#       체크포인트 호환을 위해 원본과 동일하게 유지할 것 (dim/depth/STFT 변경 금지).
+#
+# 실행 (GPU 세션 ②, 리포 루트 기준):
+#   python third_party/Music-Source-Separation-Training/train.py \
+#     --model_type mel_band_roformer \
+#     --config_path config/msst_finetune.yaml \
+#     --start_check_point models/checkpoints/MelBandRoformer.ckpt \
+#     --results_path models/checkpoints/finetune \
+#     --data_path data/processed --valid_path data/valid \
+#     --dataset_type 4 \
+#     --metrics sdr --metric_for_scheduler sdr
+#
+# 메모: - 데이터 변경 후엔 metadata_*.pkl 캐시 삭제 필수 (변경이 조용히 무시됨)
+#       - VRAM 부족 시: 아래 chunk_size를 더 줄이기 전에 MSST 버전이 지원하면
+#         model에 use_torch_checkpoint: true 추가 + optimizer: adamw8bit 시도
+#       - LoRA 폴백: --train_lora_peft (docs/LoRA.md, r=8 alpha=16)
+
+audio:
+  chunk_size: 131584        # ~2.98s — T4(16GB)/8GB 안전 프리셋. 여유 확인 후 352800(8s)로 상향
+  dim_f: 1024
+  dim_t: 256
+  hop_length: 441
+  n_fft: 2048
+  num_channels: 2
+  sample_rate: 44100
+  min_mean_abs: 0.001       # 무음 청크 필터 (기본 0.000 → 학습 효율 위해 0.001)
+
+model:                      # ⚠️ 원본과 동일 유지 — 변경 시 체크포인트 로드 실패
+  dim: 384
+  depth: 6
+  stereo: true
+  num_stems: 1
+  time_transformer_depth: 1
+  freq_transformer_depth: 1
+  num_bands: 60
+  dim_head: 64
+  heads: 8
+  attn_dropout: 0
+  ff_dropout: 0
+  flash_attn: True
+  dim_freqs_in: 1025
+  sample_rate: 44100  # needed for mel filter bank from librosa
+  stft_n_fft: 2048
+  stft_hop_length: 441
+  stft_win_length: 2048
+  stft_normalized: False
+  mask_estimator_depth: 2
+  multi_stft_resolution_loss_weight: 1.0
+  multi_stft_resolutions_window_sizes: !!python/tuple
+  - 4096
+  - 2048
+  - 1024
+  - 512
+  - 256
+  multi_stft_hop_size: 147
+  multi_stft_normalized: False
+
+training:
+  batch_size: 1                     # T4/8GB 프리셋 (원본 4는 대형 GPU 기준)
+  gradient_accumulation_steps: 8    # 실효 배치 8 확보 (Roformer는 실효 배치 필수)
+  grad_clip: 0
+  instruments:
+  - vocals
+  - other
+  lr: 1.0e-05                       # 불안정하면 5.0e-06
+  patience: 1000                    # 소규모 데이터에서 조기 lr 붕괴 방지 (원본 2)
+  reduce_factor: 0.95
+  target_instrument: vocals
+  num_epochs: 1000                  # 홀드아웃 SDR 정체 시 수동 중단
+  num_steps: 1000
+  augmentation: false               # 데이터 200곡+ 확보 전까지 증강 없이 시작
+  augmentation_type: null
+  use_mp3_compress: false
+  augmentation_mix: false
+  augmentation_loudness: false
+  augmentation_loudness_type: 1
+  augmentation_loudness_min: 0
+  augmentation_loudness_max: 0
+  q: 0.95
+  coarse_loss_clip: false
+  ema_momentum: 0.999
+  optimizer: adam                   # VRAM 부족 시 adamw8bit
+  other_fix: true
+  use_amp: true
+
+inference:
+  batch_size: 1
+  dim_t: 256
+  num_overlap: 4                    # 커뮤니티 표준 (원본 2 → 4)
