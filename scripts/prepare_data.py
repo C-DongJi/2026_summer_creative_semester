@@ -1,5 +1,7 @@
 """CLI 데이터 전처리 진입점.
 
+[창의학기제 5주차 (7/20) 산출물]
+
 사용 예:
     python scripts/prepare_data.py --config config/default.yaml
 """
