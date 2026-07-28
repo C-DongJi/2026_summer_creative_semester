@@ -1,5 +1,7 @@
 """자체 재학습(Fine-tuning) 루프 (담당: 이준영).
 
+[창의학기제 6주차 (7/27) 산출물 — Fine-tuning 루프 설계 및 환경 모듈화]
+
 창의학기제 학습 목표(학습 루프 직접 설계·구현)를 위한 경량 구현.
 검증된 기본 경로는 MSST train.py 사용 — docs/PIPELINE_DESIGN.md Mode 2 참고.
 
