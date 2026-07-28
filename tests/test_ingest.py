@@ -33,3 +33,16 @@ def test_pad_and_sum_unequal_lengths():
 def test_pad_and_sum_empty():
     assert pad_and_sum([]) is None
     assert pad_and_sum([None, None]) is None
+
+
+def test_matches_genre():
+    from src.data.ingest_common import matches_genre
+
+    assert matches_genre("Rock", ["rock"])            # 대소문자 무시
+    assert matches_genre("Rock/Pop", ["pop"])         # 부분 일치
+    assert matches_genre("Singer-Songwriter", ["singer"])
+    assert not matches_genre("Jazz", ["rock", "pop"])
+    assert matches_genre("Jazz", None)                # 필터 없음 -> 전체 허용
+    assert matches_genre("Jazz", [])
+    assert not matches_genre(None, ["rock"])          # 장르 정보 없음 -> 필터 시 제외
+    assert not matches_genre("", ["rock"])
