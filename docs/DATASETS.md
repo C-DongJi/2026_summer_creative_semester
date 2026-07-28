@@ -69,10 +69,18 @@ pip install medleydb
 python scripts/prepare_dataset.py --dataset moisesdb \
     --src /data/moisesdb_v0.1 --out data/processed --valid-dir data/valid
 
-# MedleyDB (MEDLEYDB_PATH 설정 후)
+# MoisesDB에서 특정 장르만 (장르 특화 파인튜닝 — 예: rock/pop)
+python scripts/prepare_dataset.py --dataset moisesdb \
+    --src /data/moisesdb_v0.1 --genres rock pop
+
+# MedleyDB (MEDLEYDB_PATH 설정 후, --genres 동일 지원)
 python scripts/prepare_dataset.py --dataset medleydb \
     --versions V1 V2 --out data/processed --valid-dir data/valid
 ```
+
+> **장르 선택**: MoisesDB는 트랙별 `genre` 메타데이터(12개 장르: pop, rock,
+> singer-songwriter, hip-hop/rap, electronic, jazz 등)를 제공해 `--genres`로
+> 원하는 장르만 골라 변환할 수 있다 — 설계서의 "특정 장르 특화 파인튜닝"에 사용.
 
 결과: `data/processed/<dataset>__<track>/{vocals.wav, other.wav}` (32-bit float),
 그리고 `--holdout-frac`(기본 0.1) 비율만큼 `data/valid`로 결정적 분리.
