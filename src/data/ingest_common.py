@@ -26,6 +26,20 @@ VOICE_LABELS_SINGING = {
 VOICE_LABELS_SPEECH = {"male speaker", "female speaker", "crowd"}
 
 
+def matches_genre(track_genre, wanted: list[str] | None) -> bool:
+    """트랙 장르가 원하는 장르 목록과 (대소문자 무시, 부분 문자열) 일치하는지.
+
+    wanted가 비어있으면 전체 허용. 트랙에 장르 정보가 없으면 필터 시 제외.
+    예: matches_genre("Rock/Pop", ["rock"]) -> True
+    """
+    if not wanted:
+        return True
+    if not track_genre:
+        return False
+    g = str(track_genre).lower()
+    return any(w.lower() in g for w in wanted)
+
+
 def to_stereo_tensor(arr, channels: int = 2) -> torch.Tensor:
     """numpy/torch 오디오를 [channels, samples] float32 텐서로 정규화."""
     if not isinstance(arr, torch.Tensor):
