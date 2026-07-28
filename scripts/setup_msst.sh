@@ -23,8 +23,16 @@ else
   echo "[2/3] 체크포인트 이미 존재 — 건너뜀 ($CKPT)"
 fi
 
-echo "[3/3] MSST 의존성 설치..."
-pip install -r "$MSST_DIR/requirements.txt"
+echo "[3/3] MSST 의존성 설치 (torch 계열/GUI 패키지 제외)..."
+# - torch/torchaudio: 그대로 설치하면 환경의 CUDA/CPU 빌드가 덮어써짐
+# - wxpython/pyaudio: MSST GUI 도구 전용. 빌드가 자주 실패하며(휠 없음),
+#   실패 시 pip이 전체 설치를 롤백하므로 학습/추론에 불필요한 이 둘도 제외
+grep -viE '^\s*(torch|torchaudio|torchvision|wxpython|pyaudio)([=<>!~ ]|$)' \
+  "$MSST_DIR/requirements.txt" > /tmp/msst_requirements_filtered.txt
+pip install -r /tmp/msst_requirements_filtered.txt
+# MSST가 구버전 librosa(0.9.x)를 고정하는데, 이는 setuptools 81+에서 제거된
+# pkg_resources를 임포트한다 → setuptools를 81 미만으로 고정
+pip install "setuptools<81"
 
 echo "완료. 다음으로:"
 echo "  추론 테스트:  python scripts/separate.py --input <곡.mp3> --output outputs/"
