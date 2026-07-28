@@ -1,5 +1,7 @@
 """공개 멀티 스템 데이터셋 → 2-stem 학습셋 변환 진입점.
 
+[창의학기제 5주차 (7/20) 산출물]
+
 MoisesDB / MedleyDB를 보컬/반주 2-stem으로 접어 MSST dataset_type 4
 레이아웃으로 저장한다. 일부를 검증셋(valid)으로 결정적으로 분리한다.
 
@@ -36,6 +38,8 @@ def main() -> None:
     parser.add_argument("--versions", nargs="+", default=["V1", "V2"], help="MedleyDB 버전")
     parser.add_argument("--include-speech", action="store_true", help="MedleyDB: speaker/crowd도 보컬로")
     parser.add_argument("--keep-bleed", action="store_true", help="MedleyDB: has_bleed 트랙도 포함")
+    parser.add_argument("--genres", nargs="+", default=None,
+                        help="지정 장르 트랙만 변환 (부분 일치). 예: --genres rock pop")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
@@ -48,7 +52,9 @@ def main() -> None:
         if not args.src:
             parser.error("--dataset moisesdb 는 --src (데이터 경로)가 필요합니다.")
         from src.data.moisesdb_ingest import iter_moisesdb_pairs
-        pairs = iter_moisesdb_pairs(args.src, sample_rate=sr, channels=channels)
+        pairs = iter_moisesdb_pairs(
+            args.src, sample_rate=sr, channels=channels, genres=args.genres
+        )
     else:
         from src.data.medleydb_ingest import iter_medleydb_pairs
         pairs = iter_medleydb_pairs(
@@ -57,6 +63,7 @@ def main() -> None:
             drop_bleed=not args.keep_bleed,
             sample_rate=sr,
             channels=channels,
+            genres=args.genres,
         )
 
     # 결정적 검증셋 분리: holdout_frac 비율마다 1곡을 valid로
