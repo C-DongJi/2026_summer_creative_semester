@@ -1,5 +1,7 @@
 """손실 함수 모듈.
 
+[창의학기제 6주차 (7/27) 산출물 — Fine-tuning 손실 함수]
+
 Mel-Band RoFormer 체크포인트가 학습된 원 손실을 재현한다:
   waveform L1 + Σ_w L1(complex STFT(est), complex STFT(target))
   windows = [4096, 2048, 1024, 512, 256], hop = 147 (전 해상도 공통)
