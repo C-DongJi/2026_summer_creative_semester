@@ -24,7 +24,7 @@
 ## 재정렬 일정
 
 ### ▶ ~7/13 : 로컬 배선 검증 + GPU 세션 ①
-**로컬 (안준석 주도, 오디오 I/O)** — ✅ 2026-07-28 완료
+**로컬 (안준석 주도, 오디오 I/O)** — ✅ 완료
 - [x] MP3/WAV/FLAC/OGG + 다양한 샘플레이트 [io.py](../src/audio/io.py) 검증 8/8 통과 (`scripts/verify_audio_io.py`)
 - [x] `bash scripts/setup_msst.sh` → MSST 클론 + Kim 체크포인트 다운로드 (torch 보존/GUI 제외/setuptools 고정 수정 반영)
 - [x] 10초 합성 곡으로 [scripts/separate.py](../scripts/separate.py) E2E 스모크 완료 — 실제 Kim 모델(228M) CPU 로드, [로드→청크→추론→Overlap-Add→감산→저장] 전 구간 동작, vocals+inst=mixture 오차 6.1e-05
@@ -35,7 +35,7 @@
 - [ ] chunk_seconds·overlap 값 튜닝, VRAM 사용량 표 작성
 
 ### ▶ ~7/20 : 데이터 파이프라인 (원 5주차)
-**로컬 (안준석 주도)** — ✅ 합성 데이터 E2E 완료 (2026-07-28), 실데이터만 남음
+**로컬 (안준석 주도)** — ✅ 합성 데이터 E2E 완료, 실데이터만 남음
 - [x] 합성 (mix, inst) 쌍 → [scripts/prepare_data.py](../scripts/prepare_data.py) → `check_dataset.py` 전체 통과 (길이불일치 쌍 자동 스킵 확인)
 - [x] `vocals = mix − inst` 감산 정합성(오차 3e-08), 공통 게인, MSST 레이아웃 생성 검증
 - [x] [Dataset/DataLoader](../src/training/dataset.py) 배치 로딩·세그먼트 추출·배치 내 정합성 확인
@@ -43,7 +43,7 @@
 - [ ] 운영자 수집 데이터셋 규모 확보 계획 (커뮤니티 기준 최소 ~40곡, 견고하려면 170곡+)
 
 ### ▶ ~7/27 : 파인튜닝 (원 6주차) — 주로 GPU
-**로컬 준비** — ✅ 2026-07-28 완료
+**로컬 준비** — ✅ 완료
 - [x] 경로 A용 config 작성: [config/msst_finetune.yaml](../config/msst_finetune.yaml) (Kim 레시피 파생, T4/8GB 프리셋, 실행 명령 주석 포함)
 - [x] 경로 B 자체 학습 루프 dry-run 테스트 3종 통과 (완주·체크포인트 저장·multi-STFT loss·가중치 업데이트)
 
