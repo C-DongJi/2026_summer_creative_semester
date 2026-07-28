@@ -1,5 +1,7 @@
 """재학습용 PyTorch Dataset / DataLoader (담당: 안준석).
 
+[창의학기제 5주차 (7/20) 산출물 — Dataset/DataLoader 모듈 설계]
+
 MSST dataset_type 4 레이아웃(<곡명>/{vocals.wav, other.wav})을 읽어
 일정 길이 세그먼트로 잘라 학습에 공급한다.
 
