@@ -33,11 +33,14 @@ def _resolve_autocast_dtype(precision: str, device: torch.device) -> torch.dtype
     if precision == "fp32":
         return None
     if precision == "bf16":
+        # 주의: Mel-Band RoFormer의 복소 변환(view_as_complex)은 bf16을
+        # 지원하지 않아 실패한다 — 명시적으로 요청한 경우에만 사용
         return torch.bfloat16
     if precision == "fp16":
         return torch.float16
-    # auto: bf16 지원 GPU(Ampere+)면 bf16(수치 안정), 아니면 fp16(T4 등)
-    return torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+    # auto: CUDA에서는 fp16 고정. bf16이 더 안정적인 GPU라도
+    # view_as_complex가 half/float/double만 지원하므로 fp16이 정답.
+    return torch.float16
 
 
 class SeparationPipeline:
