@@ -41,3 +41,26 @@ def test_pair_uploads_empty():
     assert pairs == {} and incomplete == []
     pairs, incomplete = pair_uploads(None)
     assert pairs == {} and incomplete == []
+
+
+def test_list_checkpoints_discovers_all_layouts(tmp_path, monkeypatch):
+    """기본/자체 루프/MSST 결과물/사용자별 체크포인트가 모두 목록에 떠야 한다."""
+    import app.webui as webui
+
+    (tmp_path / "MelBandRoformer.ckpt").touch()
+    (tmp_path / "finetune_epoch3.ckpt").touch()
+    msst_dir = tmp_path / "finetune_pop"
+    msst_dir.mkdir()
+    (msst_dir / "model_mel_band_roformer_ep_12_sdr_11.0341.ckpt").touch()
+    user_dir = tmp_path / "users" / "leejy"
+    user_dir.mkdir(parents=True)
+    (user_dir / "finetune_epoch5.ckpt").touch()
+
+    monkeypatch.setattr(webui, "CKPT_DIR", tmp_path)
+    paths = [p for _, p in webui.list_checkpoints()]
+
+    assert str(tmp_path / "MelBandRoformer.ckpt") in paths
+    assert str(tmp_path / "finetune_epoch3.ckpt") in paths
+    assert str(msst_dir / "model_mel_band_roformer_ep_12_sdr_11.0341.ckpt") in paths
+    assert str(user_dir / "finetune_epoch5.ckpt") in paths
+    assert len(paths) == 4
