@@ -28,6 +28,7 @@ import torch  # noqa: E402
 
 from src.audio.chunking import chunked_inference  # noqa: E402
 from src.audio.io import load_audio  # noqa: E402
+from src.inference.pipeline import _resolve_autocast_dtype  # noqa: E402
 from src.models.registry import load_model  # noqa: E402
 from src.utils.config import load_config  # noqa: E402
 from src.utils.device import get_device  # noqa: E402
@@ -66,13 +67,21 @@ def main() -> None:
     parser.add_argument("--config", default="config/default.yaml")
     parser.add_argument("--input", default=None, help="실제 오디오 파일 (없으면 합성 노이즈)")
     parser.add_argument("--minutes", type=float, default=4.0, help="합성 노이즈 길이(분)")
+    parser.add_argument("--precision", default=None,
+                        help="auto|fp16|bf16|fp32 (기본: config inference.precision)")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
     device = get_device(cfg.inference.device)
     sr = cfg.audio.sample_rate
+    # 실제 파이프라인과 동일한 정밀도 규칙 적용 — Kim 모델의 flash attention은
+    # fp16/bf16 입력이 필요해서 CUDA에서 fp32로 직접 호출하면
+    # "No available kernel" 오류가 난다.
+    precision = args.precision or getattr(cfg.inference, "precision", "auto")
+    autocast_dtype = _resolve_autocast_dtype(precision, device)
 
-    print(f"[env] device={device}", end="")
+    print(f"[env] device={device} | precision="
+          f"{autocast_dtype if autocast_dtype else 'fp32'}", end="")
     if device.type == "cuda":
         print(f" | {torch.cuda.get_device_name(device)} | "
               f"total {torch.cuda.get_device_properties(device).total_memory / 1e9:.1f} GB")
@@ -92,13 +101,19 @@ def main() -> None:
         mixture = torch.randn(cfg.audio.channels, n) * 0.1
         print(f"[audio] synthetic noise | {args.minutes:.1f}min ({n:,} samples)")
 
+    def _forward(x: torch.Tensor) -> torch.Tensor:
+        if autocast_dtype is not None:
+            with torch.autocast(device_type="cuda", dtype=autocast_dtype):
+                return model(x).float()
+        return model(x)
+
     def process_fn(batch: torch.Tensor) -> torch.Tensor:
         with torch.inference_mode():
-            return model(batch)
+            return _forward(batch)
 
     def run_baseline() -> None:
         with torch.inference_mode():
-            _ = model(mixture.unsqueeze(0).to(device))
+            _ = _forward(mixture.unsqueeze(0).to(device))
 
     def run_chunked() -> None:
         _ = chunked_inference(
