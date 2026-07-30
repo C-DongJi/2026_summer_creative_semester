@@ -1,4 +1,7 @@
-# Colab GPU를 VS Code에서 구동하기 (2·3주차 검증용)
+# Colab GPU를 VS Code에서 구동하기 (대안 환경)
+
+> 지금은 GPU 작업의 기본 환경이 **5060 Ti PC**다 ([SETUP_GPU_PC.md](SETUP_GPU_PC.md)).
+> 이 문서는 GPU PC를 쓸 수 없을 때 Colab T4로 대신하는 절차로 남겨둔다.
 
 로컬 WSL은 CPU 전용이라 VRAM OOM을 재현할 수 없다. Colab의 무료 GPU(T4 16GB 등)를
 빌리되, 익숙한 VS Code에서 코드를 편집·실행하기 위해 **VS Code Remote Tunnel**로 연결한다.
