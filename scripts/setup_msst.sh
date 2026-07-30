@@ -15,12 +15,22 @@ else
   echo "[1/3] MSST 이미 존재 — 건너뜀 ($MSST_DIR)"
 fi
 
-if [ ! -f "$CKPT" ]; then
-  echo "[2/3] Kim Mel-Band RoFormer 체크포인트 다운로드 (MIT, ~913MB)..."
-  wget -O "$CKPT" \
-    "https://huggingface.co/KimberleyJSN/melbandroformer/resolve/main/MelBandRoformer.ckpt"
-else
+# 913,106,900 바이트가 정상 크기 — 부분 다운로드 파일을 정상으로 오인하지 않도록
+# .part로 받고(-c 이어받기) 크기 검증 후 원자적으로 이동한다.
+CKPT_MIN_BYTES=900000000
+if [ -f "$CKPT" ] && [ "$(stat -c%s "$CKPT")" -ge "$CKPT_MIN_BYTES" ]; then
   echo "[2/3] 체크포인트 이미 존재 — 건너뜀 ($CKPT)"
+else
+  echo "[2/3] Kim Mel-Band RoFormer 체크포인트 다운로드 (MIT, ~913MB)..."
+  rm -f "$CKPT"  # 크기 미달(불완전) 파일 제거
+  wget -c -O "$CKPT.part" \
+    "https://huggingface.co/KimberleyJSN/melbandroformer/resolve/main/MelBandRoformer.ckpt"
+  ACTUAL=$(stat -c%s "$CKPT.part")
+  if [ "$ACTUAL" -lt "$CKPT_MIN_BYTES" ]; then
+    echo "오류: 다운로드가 불완전합니다 (${ACTUAL} bytes). 재실행하면 이어받습니다." >&2
+    exit 1
+  fi
+  mv "$CKPT.part" "$CKPT"
 fi
 
 echo "[3/3] MSST 의존성 설치 (torch 계열/GUI 패키지 제외)..."
