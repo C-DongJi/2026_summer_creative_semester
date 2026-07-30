@@ -10,6 +10,7 @@
     - chunk_samples 길이로 자르되 인접 청크가 overlap 만큼 겹치게 한다.
     - 각 청크 추론 결과에 페이드 윈도우(hann/linear)를 곱해 더한다(Overlap-Add).
     - 윈도우 가중치 합으로 나눠 정규화하면 경계가 매끄럽게 이어진다.
+    - VRAM 여유가 있으면 여러 청크를 배치로 묶어 한 번에 추론한다.
 """
 from __future__ import annotations
 
@@ -19,12 +20,15 @@ import torch
 
 
 def make_fade_window(length: int, kind: str = "hann") -> torch.Tensor:
-    """청크 경계 크로스페이드용 윈도우를 생성한다."""
+    """청크 경계 크로스페이드용 윈도우를 생성한다 (길이 보장)."""
     if kind == "hann":
         return torch.hann_window(length, periodic=False)
     if kind == "linear":
-        ramp = torch.linspace(0, 1, length // 2)
-        return torch.cat([ramp, ramp.flip(0)])[:length]
+        # 홀수 길이에서도 정확히 length 샘플이 되도록 상승/하강을 나눠 생성
+        half = length // 2
+        up = torch.linspace(0.0, 1.0, half)
+        down = torch.linspace(1.0, 0.0, length - half)
+        return torch.cat([up, down])
     raise ValueError(f"알 수 없는 윈도우 종류: {kind}")
 
 
@@ -51,30 +55,34 @@ def iter_chunks(
         start += hop_samples
 
 
-@torch.no_grad()
+@torch.inference_mode()
 def chunked_inference(
     waveform: torch.Tensor,
     process_fn: Callable[[torch.Tensor], torch.Tensor],
     chunk_samples: int,
-    overlap: float = 0.25,
+    overlap: float = 0.75,
     fade: str = "hann",
     device: torch.device | None = None,
+    batch_size: int = 1,
 ) -> torch.Tensor:
     """청크 분할 추론 + Overlap-Add 병합.
 
     Args:
         waveform: 입력 [channels, samples]
-        process_fn: 청크[..., chunk_samples] -> 동일 길이 출력 추론 함수
-                    (출력 stem 차원이 추가될 수 있음: [stems, channels, samples])
+        process_fn: 배치 청크 [B, C, chunk_samples] -> 동일 길이 출력 추론 함수
+                    (stem 차원이 추가될 수 있음: [B, S, C, chunk_samples])
         chunk_samples: 청크 길이(샘플)
-        overlap: 청크 간 겹침 비율 (0~1)
+        overlap: 청크 간 겹침 비율 (0~1). 0이면 페이드 윈도우가 경계를
+                 복원하지 못해 드롭아웃이 생기므로 허용하지 않는다.
         fade: 크로스페이드 윈도우 종류
         device: 추론 디바이스 (None이면 입력 텐서 디바이스)
+        batch_size: 한 번에 추론할 청크 수 (VRAM 여유에 맞춰 상향 가능)
 
     Returns:
-        병합된 출력 텐서 (process_fn 출력과 동일한 stem/channel 구조, 원본 길이로 잘림)
+        병합된 출력 텐서 (stem 차원 유지, 원본 길이로 잘림)
     """
-    assert 0.0 <= overlap < 1.0, "overlap은 [0, 1) 범위여야 합니다."
+    assert 0.0 < overlap < 1.0, "overlap은 (0, 1) 범위여야 합니다."
+    assert batch_size >= 1
     orig_total = waveform.shape[-1]
     hop_samples = max(1, int(chunk_samples * (1 - overlap)))
     window = make_fade_window(chunk_samples, fade)
@@ -87,24 +95,35 @@ def chunked_inference(
     total = waveform.shape[-1]
 
     out_acc: torch.Tensor | None = None
-    weight_acc: torch.Tensor | None = None
+    weight_acc = torch.zeros(total)
 
-    for start, chunk in iter_chunks(waveform, chunk_samples, hop_samples):
+    pending: list[tuple[int, torch.Tensor]] = []
+
+    def flush() -> None:
+        nonlocal out_acc
+        if not pending:
+            return
+        batch = torch.stack([c for _, c in pending])       # [B, C, T]
         if device is not None:
-            chunk = chunk.to(device)
-        est = process_fn(chunk)            # [..., chunk_samples]
-        est = est.cpu()
+            batch = batch.to(device)
+        est = process_fn(batch).cpu()                       # [B, ..., T]
 
-        # 출력 구조에 맞춰 누적 버퍼 초기화 (지연 초기화)
         if out_acc is None:
-            tail_shape = est.shape[:-1]                      # stem/channel 차원
+            tail_shape = est.shape[1:-1]                    # stem/channel 차원
             out_acc = torch.zeros(*tail_shape, total)
-            weight_acc = torch.zeros(total)
 
         win = window.to(est.dtype)
-        seg_len = min(chunk_samples, total - start)
-        out_acc[..., start:start + seg_len] += (est * win)[..., :seg_len]
-        weight_acc[start:start + seg_len] += win[:seg_len]
+        for j, (start, _) in enumerate(pending):
+            seg_len = min(chunk_samples, total - start)
+            out_acc[..., start:start + seg_len] += (est[j] * win)[..., :seg_len]
+            weight_acc[start:start + seg_len] += win[:seg_len]
+        pending.clear()
+
+    for start, chunk in iter_chunks(waveform, chunk_samples, hop_samples):
+        pending.append((start, chunk))
+        if len(pending) >= batch_size:
+            flush()
+    flush()
 
     # 0으로 나누기 방지 후 정규화, 패딩 영역 제거
     weight_acc = weight_acc.clamp_min(1e-8)
