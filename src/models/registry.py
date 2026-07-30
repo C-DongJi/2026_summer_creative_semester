@@ -85,8 +85,10 @@ def _load_msst_model(
             )
         except (TypeError, RuntimeError):
             state = torch.load(str(ckpt_path), map_location="cpu", weights_only=False)
-        # MSST 체크포인트는 순수 state_dict 또는 {'state_dict'|'state': ...} 래핑
-        for key in ("state_dict", "state"):
+        # 순수 state_dict 또는 래핑된 형태 모두 지원:
+        # 배포 체크포인트는 {'state_dict'|'state': ...}, MSST train.py 파인튜닝
+        # 결과물은 {'model_state_dict': ..., 'optimizer_state_dict': ...} 형태
+        for key in ("state_dict", "state", "model_state_dict"):
             if isinstance(state, dict) and key in state:
                 state = state[key]
                 break
