@@ -58,6 +58,10 @@ def save_audio(
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    if not float32:
+        # PCM_16은 [-1, 1] 밖 값이 래핑/왜곡될 수 있음 — 감산 유도 스템 등
+        # 피크가 1을 넘는 신호를 안전하게 클램프
+        waveform = waveform.clamp(-1.0, 1.0)
     data = waveform.detach().cpu().numpy().T  # (frames, channels)
     subtype = "FLOAT" if float32 else "PCM_16"
     sf.write(str(path), data, sample_rate, subtype=subtype)
