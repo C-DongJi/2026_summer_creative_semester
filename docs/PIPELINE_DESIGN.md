@@ -66,7 +66,7 @@ MP3/WAV 입력
   → [모델 추론] Mel-Band RoFormer → 보컬 추정 (청크당 VRAM ~수 GB)
   → [Overlap-Add] 페이드 윈도우 가중 합산 + 가중치 정규화 (src/audio/chunking.py)
   → [반주 복원] instrumental = mixture − vocals   ← 단일 타깃 모델의 정확한 감산
-  → vocal.wav + inst.wav 출력
+  → <곡명>_vocals.wav + <곡명>_instrumental.wav 출력
 ```
 
 - 모델 STFT 규격(체크포인트 고정): n_fft 2048, hop 441, 60 mel bands, 44.1kHz 스테레오.
@@ -88,6 +88,7 @@ MP3/WAV 입력
            --model_type mel_band_roformer \
            --config_path config/msst_finetune.yaml \
            --start_check_point models/checkpoints/MelBandRoformer.ckpt \
+           --results_path models/checkpoints/finetune \
            --dataset_type 4 --data_path data/processed --valid_path data/valid \
            --metrics sdr log_wmse --metric_for_scheduler sdr
       B. 자체 학습 루프 (src/training/train.py — 창의학기제 학습 목표: 루프 직접 구현)
