@@ -16,7 +16,10 @@ model:
 
 # 분할 추론 (Chunked Inference) + Overlap-Add
 inference:
-  device: auto              # auto | cuda | cpu
+  device: auto              # auto | cuda | npu | xpu | mps | cpu
+                            # auto: cuda > npu > xpu > mps > cpu 순 자동 선택
+                            # npu는 torch_npu 플러그인 필요. RoFormer의 STFT/복소
+                            # 연산이 NPU에서 미지원이면 cpu/cuda로 되돌릴 것
   chunk_seconds: 8.0        # 352,800 샘플 = 모델 네이티브 학습 청크
   overlap: 0.75             # step = chunk/4 (MSST num_overlap 4와 동일 규격). 0은 불가(경계 드롭아웃)
   fade: hann                # 경계 크로스페이드: hann | linear
