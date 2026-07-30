@@ -13,6 +13,26 @@ MoisesDB(240곡, 12개 장르 메타데이터)를 원하는 장르만 골라 2-s
 2. 받은 링크로 다운로드 (약 80GB 단일 아카이브 — 부분 다운로드는 제공되지 않음.
    유선 연결로 밤 사이에 받는 것을 권장)
 
+### Windows D드라이브에 받았다면 (WSL 연결법)
+
+Windows의 드라이브는 WSL 안에서 `/mnt/<드라이브 문자>`로 자동 연결된다:
+
+| Windows 경로 | WSL 경로 |
+|---|---|
+| `D:\datasets\moisesdb.zip` | `/mnt/d/datasets/moisesdb.zip` |
+
+그래서 zip 경로는 그냥 `--zip /mnt/d/datasets/moisesdb.zip` 처럼 쓰면 된다.
+
+⚠️ **추출 위치는 WSL 내부로**: `/mnt/d`는 Windows 파일시스템 브리지라 작은 파일
+다수 I/O가 매우 느리다. zip은 D드라이브에 두고 읽되(큰 파일 순차 읽기라 괜찮음),
+**추출과 변환 결과는 WSL 홈 안에** 두어야 학습 데이터 로딩이 느려지지 않는다:
+
+```bash
+# 좋은 예: zip은 /mnt/d에서 읽고, 추출은 WSL 내부(~/data)로
+python scripts/extract_moisesdb_subset.py --zip /mnt/d/datasets/moisesdb.zip \
+    --genres pop --out ~/data/moisesdb_pop
+```
+
 ### 80GB 대응: 통째로 풀지 말고 장르만 선별 추출
 
 전체 압축 해제는 디스크 160GB가 필요하다. 대신 zip 안의 메타데이터만 읽어
