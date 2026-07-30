@@ -13,6 +13,7 @@
 #     --results_path models/checkpoints/finetune \
 #     --data_path data/processed --valid_path data/valid \
 #     --dataset_type 4 \
+#     --num_workers 4 --pin_memory \
 #     --metrics sdr --metric_for_scheduler sdr
 #
 # 메모: - 데이터 변경 후엔 metadata_*.pkl 캐시 삭제 필수 (변경이 조용히 무시됨)
@@ -73,6 +74,9 @@ training:
   target_instrument: vocals
   num_epochs: 1000                  # 홀드아웃 SDR 정체 시 수동 중단
   num_steps: 1000
+  # ⚠️ 아래 augmentation* 키들은 원본 config 호환용으로 유지하지만, 현재 MSST
+  # 체크아웃에서는 읽히지 않는 죽은 키다(신버전은 별도 augmentations: 섹션 사용).
+  # 증강을 켜려면 MSST docs/augmentations.md 방식으로 augmentations 섹션을 추가할 것.
   augmentation: false               # 데이터 200곡+ 확보 전까지 증강 없이 시작
   augmentation_type: null
   use_mp3_compress: false
