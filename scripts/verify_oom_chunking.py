@@ -38,10 +38,14 @@ def _measure(fn, device: torch.device) -> dict:
     if device.type == "cuda":
         torch.cuda.empty_cache()
         torch.cuda.reset_peak_memory_stats(device)
+        torch.cuda.synchronize(device)
     t0 = time.time()
     status = "ok"
     try:
         fn()
+        # CUDA 커널은 비동기 실행 — 동기화 없이는 시간이 과소 측정된다
+        if device.type == "cuda":
+            torch.cuda.synchronize(device)
     except torch.cuda.OutOfMemoryError:
         status = "OOM"
     except RuntimeError as exc:  # CPU OOM 등은 RuntimeError로 옴
@@ -88,13 +92,12 @@ def main() -> None:
         mixture = torch.randn(cfg.audio.channels, n) * 0.1
         print(f"[audio] synthetic noise | {args.minutes:.1f}min ({n:,} samples)")
 
-    def process_fn(chunk: torch.Tensor) -> torch.Tensor:
-        with torch.no_grad():
-            out = model(chunk.unsqueeze(0))
-        return out.squeeze(0)
+    def process_fn(batch: torch.Tensor) -> torch.Tensor:
+        with torch.inference_mode():
+            return model(batch)
 
     def run_baseline() -> None:
-        with torch.no_grad():
+        with torch.inference_mode():
             _ = model(mixture.unsqueeze(0).to(device))
 
     def run_chunked() -> None:
@@ -105,6 +108,7 @@ def main() -> None:
             overlap=cfg.inference.overlap,
             fade=cfg.inference.fade,
             device=device,
+            batch_size=cfg.inference.batch_size,
         )
 
     print("\n[A] 베이스라인 (청크 없음, 전체 일괄 추론) ...")
