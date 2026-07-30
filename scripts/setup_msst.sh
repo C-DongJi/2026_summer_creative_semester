@@ -6,6 +6,14 @@ set -euo pipefail
 MSST_DIR="third_party/Music-Source-Separation-Training"
 CKPT="models/checkpoints/MelBandRoformer.ckpt"
 
+# 사전 점검: MSST 의존성 중 pesq/diffq는 C 확장이라 gcc가 필요하다.
+# 새 WSL/Ubuntu에는 gcc가 없어 빌드가 통째로 실패하므로 먼저 확인한다.
+if ! command -v gcc >/dev/null 2>&1; then
+  echo "오류: gcc가 없습니다. 일부 패키지(pesq, diffq) 빌드가 실패합니다." >&2
+  echo "먼저 실행하세요:  sudo apt update && sudo apt install -y build-essential" >&2
+  exit 1
+fi
+
 mkdir -p third_party models/checkpoints
 
 if [ ! -d "$MSST_DIR" ]; then
