@@ -34,6 +34,7 @@ def main() -> None:
         sample_rate=cfg.audio.sample_rate,
         channels=cfg.audio.channels,
         normalize=cfg.data.normalize,
+        target_peak=cfg.data.target_peak,
     )
     print(f"전처리 완료: {count}개 트랙 -> {out}")
 
