@@ -68,12 +68,10 @@ python scripts/make_demo_pairs.py --count 3
 주의: 이 데모 쌍은 MUSDB 유래라 **기능 테스트 전용**이다. 실제 품질 개선 실험은
 MoisesDB로 한다 (다음 단계).
 
-## 5단계. (다음 작업) 장르 파인튜닝 + 효과 평가
+## 5단계. (다음 작업) 재학습 실험 — 결과 도출까지
 
-여기까지 통과하면 테스트는 끝. 이후 본 실험으로 진행:
-
-1. MoisesDB 신청·다운로드 후 장르 선택 파인튜닝 — [FINETUNE_MOISESDB.md](FINETUNE_MOISESDB.md)
-2. 재학습 장르/타 장르 SDR 비교 평가 — [EVALUATION.md](EVALUATION.md) + `scripts/evaluate.py`
+여기까지 통과하면 기능 테스트는 끝. 본 실험(데이터 준비 → 파인튜닝 → 평가 →
+결과 표)은 **[EXPERIMENT.md](EXPERIMENT.md)** 절차서를 따라 진행한다.
 
 ## 결과 기록
 
