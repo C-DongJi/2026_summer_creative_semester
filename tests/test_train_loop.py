@@ -91,3 +91,23 @@ def test_train_loop_updates_weights(tmp_path, monkeypatch):
     train_mod.train(cfg)
 
     assert not torch.equal(before, model.conv.weight.detach()), "가중치가 업데이트되지 않음"
+
+
+def test_updates_even_when_tracks_fewer_than_accum(tmp_path, monkeypatch):
+    """트랙 수 < gradient_accumulation_steps일 때도 옵티마이저가 스텝해야 한다.
+
+    과거 버그: step % accum == 0만 체크해서 3트랙/accum=8이면 50에폭 내내
+    가중치가 한 번도 업데이트되지 않았다 (에폭 끝 flush 회귀 테스트).
+    """
+    _make_dataset(tmp_path, n_tracks=3)
+    cfg = _make_cfg(tmp_path, loss_name="l1")
+    cfg["training"]["gradient_accumulation_steps"] = 8  # 트랙 3 < accum 8
+    model = TinyModel()
+    before = model.conv.weight.detach().clone()
+    monkeypatch.setattr(train_mod, "load_model", lambda m, device=None: model)
+
+    train_mod.train(cfg)
+
+    assert not torch.equal(before, model.conv.weight.detach()), (
+        "트랙 수가 accum보다 적으면 가중치가 전혀 학습되지 않는 버그 재발"
+    )
