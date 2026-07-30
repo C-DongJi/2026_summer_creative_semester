@@ -25,6 +25,11 @@ RTX 50 시리즈(Blackwell, sm_120)는 **CUDA 12.8 이상 빌드의 PyTorch가 �
    재부팅 후 Ubuntu 초기 계정을 만든다. Windows 드라이버만 있으면 WSL 안에서
    GPU가 자동 인식된다(WSL용 CUDA 툴킷 별도 설치 불필요).
    WSL 터미널에서 `nvidia-smi`가 나오는지 확인.
+
+   이어서 빌드 도구를 설치한다 (일부 파이썬 패키지가 C 컴파일러를 요구):
+   ```bash
+   sudo apt update && sudo apt install -y build-essential
+   ```
 3. **Miniconda** (WSL 터미널):
    ```bash
    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
@@ -159,6 +164,7 @@ python third_party/Music-Source-Separation-Training/train.py \
 
 | 증상 | 조치 |
 |---|---|
+| `error: command 'gcc' failed` (pesq/diffq 빌드 실패) | 빌드 도구 미설치. `sudo apt update && sudo apt install -y build-essential` 후 `bash scripts/setup_msst.sh` 재실행 |
 | `sm_120 is not compatible ...` | torch가 cu128이 아님. `pip uninstall torch torchaudio` 후 3단계 cu128 명령으로 재설치 |
 | WSL에서 `nvidia-smi` 없음 | Windows 드라이버 구버전이거나 WSL 재시작 필요: PowerShell에서 `wsl --shutdown` 후 재진입 |
 | `torch.cuda.is_available()` False | 위 두 항목 순서로 확인 |
