@@ -1,0 +1,82 @@
+# GPU PC 테스트 진행 순서
+
+웹에서 분리가 동작하는 것을 확인한 뒤, 프로젝트 검증을 완료하기 위한 테스트 절차.
+위에서부터 순서대로 진행하고, 각 단계의 결과를 기록해 보고서에 쓴다.
+
+시작 전: `git pull` 로 최신 코드인지 확인.
+
+## 1단계. 단위 테스트 (1분)
+
+```bash
+python -m pytest tests/ -q
+```
+
+- 기대: **34 passed** (청크/손실/인제스트/학습루프/지표/웹헬퍼/디바이스)
+- 실패가 있으면 여기서 멈추고 출력 공유
+
+## 2단계. 정량 측정: 베이스라인 OOM vs 청크 (2·3주차 실측, ~20분)
+
+```bash
+python scripts/verify_oom_chunking.py --minutes 1
+python scripts/verify_oom_chunking.py --minutes 2
+python scripts/verify_oom_chunking.py --minutes 4
+python scripts/verify_oom_chunking.py --minutes 8
+```
+
+기록 표 (각 실행의 `=== 요약 ===` 값):
+
+| 길이 | 베이스라인 상태 | 베이스라인 peak VRAM | 청크 상태 | 청크 peak VRAM |
+|------|---------------|--------------------|----------|---------------|
+| 1분  |               |                    |          |               |
+| 2분  |               |                    |          |               |
+| 4분  |               |                    |          |               |
+| 8분  |               |                    |          |               |
+
+- 기대: 베이스라인은 어느 길이부터 OOM, 청크는 전 구간 ok + 낮은 VRAM 일정
+- 이 표가 "청크 분할로 OOM을 해결했다"는 프로젝트 핵심 증거다
+
+## 3단계. 정성 검증: 실제 곡 분리 품질 (~10분)
+
+웹 UI(또는 `python scripts/separate.py --input <곡>`)로 실제 곡 2~3곡을 분리하고
+결과를 들어보며 체크:
+
+- [ ] 보컬 트랙에 보컬만, 반주 트랙에 반주만 들리는가
+- [ ] **8초 간격(청크 경계)에서 틱/뚝 소리가 없는가** ← Overlap-Add 검증 포인트
+- [ ] 반주에 보컬 잔향(bleeding)이 심하지 않은가
+- [ ] 분리 소요 시간이 표시되고 곡당 수 초~수십 초 수준인가 (GPU 동작 확인)
+
+장르가 다른 곡(발라드/록/힙합 등)으로 섞어서 확인하면 좋다.
+
+## 4단계. 웹 재학습 기능 E2E (~15분)
+
+재학습 탭을 실제로 돌려보는 테스트. 먼저 테스트용 (mix, inst) 쌍을 만든다:
+
+```bash
+pip install musdb        # 1회
+python scripts/make_demo_pairs.py --count 3
+```
+
+`outputs/demo_pairs/`에 `<곡명>_mix.wav` / `<곡명>_inst.wav` 쌍이 생긴다. 이후:
+
+1. 웹 UI **재학습 탭** → 사용자 이름 입력(예: test) → 위 파일 6개 전부 업로드 → **데이터 추가**
+   - 기대: "✅ 곡명" 3줄 + "3곡 추가 — 총 3곡"
+2. 에폭 **3**, lr 기본값 → **재학습 시작**
+   - 기대: 진행률 표시 후 "✅ 재학습 완료" (GPU라 수 분 내)
+3. **음원 분리 탭** → 모델 드롭다운에 "test님의 모델" 등장 확인 → 그 모델로 아무 곡 분리
+   - 기대: 정상 분리 (품질 개선은 기대하지 않음 — 3곡×3에폭은 기능 테스트일 뿐)
+
+주의: 이 데모 쌍은 MUSDB 유래라 **기능 테스트 전용**이다. 실제 품질 개선 실험은
+MoisesDB로 한다 (다음 단계).
+
+## 5단계. (다음 작업) 장르 파인튜닝 + 효과 평가
+
+여기까지 통과하면 테스트는 끝. 이후 본 실험으로 진행:
+
+1. MoisesDB 신청·다운로드 후 장르 선택 파인튜닝 — [FINETUNE_MOISESDB.md](FINETUNE_MOISESDB.md)
+2. 재학습 장르/타 장르 SDR 비교 평가 — [EVALUATION.md](EVALUATION.md) + `scripts/evaluate.py`
+
+## 결과 기록
+
+- 2단계 표 + 3단계 체크 결과 + 4단계 통과 여부를 [SCHEDULE.md](SCHEDULE.md)의
+  GPU 세션 ① 항목과 최종 보고서에 기록
+- 문제가 나오면: 증상별 조치는 [SETUP_GPU_PC.md](SETUP_GPU_PC.md) 9단계 문제 해결 표
