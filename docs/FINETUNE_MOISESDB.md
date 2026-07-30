@@ -94,4 +94,6 @@ MoisesDB처럼 스템이 이미 분리된 데이터는 경로 A/B가 적합하�
   **Web UI의 모델 드롭다운에 자동으로 나타난다** → 선택해서 분리 품질 비교
 - CLI 비교: `config/default.yaml`의 `model.checkpoint`를 새 경로로 바꾸고
   `python scripts/separate.py --input <곡>` 실행
-- 평가: 홀드아웃 검증셋(`data/valid`)의 SDR을 기본 모델과 비교해 장르 특화 효과 확인
+- 평가: **재학습 장르 + 타 장르를 함께** SDR로 비교해 향상과 부작용(망각)을 동시에
+  확인한다 — 실험 설계·판정 기준·명령어는 [EVALUATION.md](EVALUATION.md), 실행은
+  `scripts/evaluate.py`
