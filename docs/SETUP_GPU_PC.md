@@ -3,7 +3,7 @@
 RTX 5060 Ti가 있는 PC에서 이 프로젝트 전체(분리 데모, GPU 검증, 파인튜닝, Web UI)를
 돌리기 위한 처음부터 끝까지의 절차. 위에서부터 순서대로 따라 하면 된다.
 
-5060 Ti는 8GB와 16GB 두 버전이 있다. 자기 버전을 모르면 3단계의 `nvidia-smi`
+5060 Ti는 8GB와 16GB 두 버전이 있다. 자기 버전을 모르면 2단계의 `nvidia-smi`
 출력(memory.total)으로 확인하고, 6단계 프리셋 표에서 해당 열을 따르면 된다.
 
 ---
@@ -76,7 +76,7 @@ python -m pytest tests/ -q
 python scripts/verify_audio_io.py
 ```
 
-(1)에서 False가 나오거나 sm_120 오류가 보이면 8단계 문제 해결 참고.
+(1)에서 False가 나오거나 sm_120 오류가 보이면 9단계 문제 해결 참고.
 
 ## 5. GPU 검증 실행 (2·3주차 실측, 약 20분)
 
@@ -99,8 +99,8 @@ python scripts/verify_oom_chunking.py --minutes 8
 # 아무 곡이나 (mp3/wav). 분리 결과가 outputs/에 저장된다
 python scripts/separate.py --input <곡파일> --output outputs/
 ```
-들어보고 확인할 것: 보컬/반주가 분리되는지, 8초 간격 청크 경계에서 틱 소리가
-없는지(Overlap-Add 검증 포인트).
+들어보고 확인할 것: 보컬/반주가 분리되는지, 청크 경계(2초 간격으로 지나감)에서
+틱 소리가 없는지(Overlap-Add 검증 포인트).
 
 ## 6. VRAM 프리셋
 
@@ -111,8 +111,9 @@ python scripts/separate.py --input <곡파일> --output outputs/
 | 학습 옵션 | `optimizer: adamw8bit` + grad accum 8 | adam + grad accum 4~8 |
 
 추론은 `inference.precision: auto`가 fp16을 자동 적용해 VRAM을 절반으로 쓴다.
-학습 중 OOM이 나면: chunk_size를 한 단계 낮추기 → adamw8bit → LoRA
-(`--train_lora_peft`, r=8 alpha=16) 순으로 시도.
+학습 중 OOM이 나면: chunk_size를 한 단계 낮추기 → adamw8bit → LoRA 순으로 시도.
+LoRA(`--train_lora_peft`)는 쓰기 전에 `config/msst_finetune.yaml`에 `lora:` 섹션
+(r: 8, lora_alpha: 16 등)을 추가해야 한다 — 없으면 KeyError로 죽는다.
 
 ## 7. Web UI (분리 + 사용자별 재학습)
 
@@ -157,8 +158,8 @@ python third_party/Music-Source-Separation-Training/train.py \
   --metrics sdr --metric_for_scheduler sdr
 ```
 
-완료된 체크포인트를 `models/checkpoints/` 아래에 두면 Web UI 드롭다운에 자동으로
-나타난다.
+완료되면 `models/checkpoints/finetune_pop/` 안의 MSST 결과물(`model_*_sdr_*.ckpt`)이
+Web UI 드롭다운에 자동으로 나타난다 (자체 루프 결과 `finetune_epoch*.ckpt`도 동일).
 
 ## 9. 문제 해결
 
@@ -167,7 +168,7 @@ python third_party/Music-Source-Separation-Training/train.py \
 | `error: command 'gcc' failed` (pesq/diffq 빌드 실패) | 빌드 도구 미설치. `sudo apt update && sudo apt install -y build-essential` 후 `bash scripts/setup_msst.sh` 재실행 |
 | `sm_120 is not compatible ...` | torch가 cu128이 아님. `pip uninstall torch torchaudio` 후 3단계 cu128 명령으로 재설치 |
 | `No available kernel. Aborting execution.` | flash attention은 반정밀 필요. `git pull` 후 재실행(자동 적용) |
-| `view_as_complex is only supported for half, float and double ... BFloat16` | 이 모델은 bf16 불가(복소 변환 미지원). `git pull` 후 재실행하면 auto가 fp16을 적용. 수동으로는 `--precision fp16` |
+| `view_as_complex is only supported for half, float and double ... BFloat16` | 이 모델은 bf16 불가(복소 변환 미지원). `git pull` 후 재실행하면 auto가 fp16을 적용. 수동 지정은 verify_oom_chunking.py는 `--precision fp16`, separate.py/Web UI는 config의 `inference.precision: fp16` |
 | WSL에서 `nvidia-smi` 없음 | Windows 드라이버 구버전이거나 WSL 재시작 필요: PowerShell에서 `wsl --shutdown` 후 재진입 |
 | `torch.cuda.is_available()` False | 위 두 항목 순서로 확인 |
 | 체크포인트 다운로드 중단 | `bash scripts/setup_msst.sh` 재실행(이어받기). "다운로드 불완전" 메시지가 나오면 한 번 더 |
