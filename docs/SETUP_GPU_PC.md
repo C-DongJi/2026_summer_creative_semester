@@ -166,6 +166,7 @@ python third_party/Music-Source-Separation-Training/train.py \
 |---|---|
 | `error: command 'gcc' failed` (pesq/diffq 빌드 실패) | 빌드 도구 미설치. `sudo apt update && sudo apt install -y build-essential` 후 `bash scripts/setup_msst.sh` 재실행 |
 | `sm_120 is not compatible ...` | torch가 cu128이 아님. `pip uninstall torch torchaudio` 후 3단계 cu128 명령으로 재설치 |
+| `No available kernel. Aborting execution.` | flash attention은 fp16/bf16 필요. `git pull` 후 재실행(스크립트가 자동 적용). 지속되면 `--precision fp16`과 `bf16`을 각각 시도 |
 | WSL에서 `nvidia-smi` 없음 | Windows 드라이버 구버전이거나 WSL 재시작 필요: PowerShell에서 `wsl --shutdown` 후 재진입 |
 | `torch.cuda.is_available()` False | 위 두 항목 순서로 확인 |
 | 체크포인트 다운로드 중단 | `bash scripts/setup_msst.sh` 재실행(이어받기). "다운로드 불완전" 메시지가 나오면 한 번 더 |
