@@ -27,15 +27,16 @@ multisong vocals SDR이 11~12 dB 수준이다.
 | **B. 타 장르셋** | MoisesDB의 다른 장르들(rock, jazz, electronic 등)에서 뽑은 트랙 — 학습에 전혀 안 쓴 것 | Q2 |
 | **C. (권장) 외부 표준셋** | MUSDB18-HQ **test** 50곡 (Zenodo 공개). 우리 학습에 안 쓰므로 평가 전용으로 적합하고, 공개 리더보드 수치와 비교 가능 | Q2 + 외부 비교 |
 
-만드는 법 (예: pop 재학습 실험):
+만드는 법 (예: pop 재학습 실험 — `<MOISESDB>`는 추출 경로,
+[FINETUNE_MOISESDB.md](FINETUNE_MOISESDB.md) 0단계 참고):
 
 ```bash
 # A+학습셋: pop만 변환 — valid로 분리된 것이 평가셋 A
-python scripts/prepare_dataset.py --dataset moisesdb --genres pop \
+python scripts/prepare_dataset.py --dataset moisesdb --src <MOISESDB> --genres pop \
     --out data/train_pop --valid-dir data/eval/pop
 
 # B: 타 장르를 별도 폴더로 (학습에 쓰지 않음 — 전부 평가용)
-python scripts/prepare_dataset.py --dataset moisesdb --genres rock jazz electronic \
+python scripts/prepare_dataset.py --dataset moisesdb --src <MOISESDB> --genres rock jazz electronic \
     --out data/eval/others --valid-dir data/eval/others --holdout-frac 0
 
 # C: MUSDB18-HQ test를 받아 <곡>/{vocals.wav, other.wav}로 변환
@@ -88,11 +89,15 @@ python scripts/evaluate.py \
 Δ 기준은 커뮤니티 파인튜닝 선례(41곡에서 ~0.1-0.3 dB 변화가 유의미)에 맞춘
 출발점이며, 트랙별 분산이 크면(±2 dB) 평균과 함께 **향상 곡 비율**로 판단한다.
 
+이 기준표는 `scripts/make_report.py`에 코드로 구현되어 있어, 평가 JSON을 넣으면
+판정과 조치 안내가 보고서에 자동으로 들어간다 ([EXPERIMENT.md](EXPERIMENT.md) 5단계).
+
 ## 6. 보고서 기록 양식
 
 | 실험 | 학습 데이터 | 에폭/lr | A: pop (Δ) | B: others (Δ) | C: MUSDB test (Δ) | 판정 |
 |---|---|---|---|---|---|---|
 | pop-ft-01 | MoisesDB pop N곡 | 30 / 1e-5 | +0.4 | −0.05 | −0.02 | ✅ |
 
+이 표를 포함한 보고서 전체는 `make_report.py`가 자동 생성한다.
 청취 평가(정성)도 병기 권장: A/B 각 2곡씩 base vs ft 블라인드로 듣고
 보컬 잔향(bleeding)·아티팩트 유무 기록.
