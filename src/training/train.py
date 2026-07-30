@@ -27,7 +27,15 @@ from src.utils.device import get_device
 def train(cfg: Config) -> None:
     """설정에 따라 Fine-tuning을 수행한다."""
     device = get_device(cfg.inference.device)
-    model = load_model(cfg.model, device=device)
+
+    # training.resume_from이 지정되면 그 체크포인트에서 재개 (기본은 model.checkpoint)
+    model_cfg = cfg.model
+    resume_from = getattr(cfg.training, "resume_from", None)
+    if resume_from:
+        merged = dict(model_cfg)
+        merged["checkpoint"] = resume_from
+        model_cfg = Config(merged)
+    model = load_model(model_cfg, device=device)
     model.train()
 
     loader = build_dataloader(
@@ -48,6 +56,7 @@ def train(cfg: Config) -> None:
     ckpt_dir = Path(cfg.training.checkpoint_dir)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
+    total_steps = len(loader)
     for epoch in range(1, cfg.training.epochs + 1):
         running = 0.0
         optimizer.zero_grad()
@@ -61,7 +70,10 @@ def train(cfg: Config) -> None:
                 loss = loss_fn(est, vocals) / accum
 
             scaler.scale(loss).backward()
-            if step % accum == 0:
+            # 에폭 마지막 배치에서는 축적이 덜 찼어도 반드시 스텝 —
+            # 그러지 않으면 남은 그래디언트가 다음 에폭의 zero_grad로 버려지고,
+            # 트랙 수 < accum이면 옵티마이저가 영영 돌지 않는다.
+            if step % accum == 0 or step == total_steps:
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.zero_grad()
@@ -69,9 +81,9 @@ def train(cfg: Config) -> None:
             running += loss.item() * accum
             pbar.set_postfix(loss=f"{loss.item() * accum:.4f}")
 
-        avg = running / max(1, len(loader))
+        avg = running / max(1, total_steps)
         print(f"[epoch {epoch}] avg loss = {avg:.4f}")
-        _save_checkpoint(model, ckpt_dir / f"finetune_epoch{epoch}.ckpt", epoch)
+        _save_checkpoint(model, ckpt_dir, epoch, keep_last=3)
 
 
 def _forward_vocals(model: torch.nn.Module, mixture: torch.Tensor) -> torch.Tensor:
@@ -84,5 +96,15 @@ def _forward_vocals(model: torch.nn.Module, mixture: torch.Tensor) -> torch.Tens
     return est
 
 
-def _save_checkpoint(model: torch.nn.Module, path: Path, epoch: int) -> None:
+def _save_checkpoint(
+    model: torch.nn.Module, ckpt_dir: Path, epoch: int, keep_last: int = 3
+) -> None:
+    """에폭 체크포인트 저장 후 최근 keep_last개만 보관 (228M 모델 = 개당 ~0.9GB)."""
+    path = ckpt_dir / f"finetune_epoch{epoch}.ckpt"
     torch.save({"epoch": epoch, "state_dict": model.state_dict()}, path)
+    old = sorted(
+        ckpt_dir.glob("finetune_epoch*.ckpt"),
+        key=lambda p: int(p.stem.replace("finetune_epoch", "")),
+    )
+    for stale in old[:-keep_last]:
+        stale.unlink()
