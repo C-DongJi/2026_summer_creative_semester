@@ -18,6 +18,8 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import time
+import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -101,12 +103,20 @@ def separate(audio_path: str, ckpt_path: str):
     if not ckpt_path:
         return None, None, "체크포인트를 선택하세요."
     pipeline = get_pipeline(ckpt_path)
-    paths = pipeline.separate_to_files(audio_path, OUTPUT_DIR)
-    note = "" if torch.cuda.is_available() else " (CPU 모드 — 긴 곡은 오래 걸립니다)"
+
+    # 실행마다 고유 폴더에 저장 — 이전 실행 결과 덮어쓰기/혼동 방지
+    run_dir = OUTPUT_DIR / f"run_{uuid.uuid4().hex[:8]}"
+    # 화면의 경과 시간은 '대기열에서 기다린 시간'까지 합산되어 보일 수 있으므로
+    # 순수 분리 시간은 여기서 직접 측정해 표시한다.
+    t0 = time.time()
+    paths = pipeline.separate_to_files(audio_path, run_dir)
+    elapsed = time.time() - t0
+
+    note = "" if torch.cuda.is_available() else " · CPU 모드 — 긴 곡은 오래 걸립니다"
     return (
         str(paths["vocals"]),
         str(paths["instrumental"]),
-        f"분리 완료{note}",
+        f"분리 완료 — 이번 작업 **{elapsed:.1f}초** (앞 작업 대기 시간 제외{note})",
     )
 
 
