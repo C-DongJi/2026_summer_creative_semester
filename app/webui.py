@@ -81,6 +81,11 @@ def list_checkpoints() -> list[tuple[str, str]]:
         items.append(("기본 모델 (Kim 사전학습)", str(base)))
     for p in sorted(CKPT_DIR.glob("finetune_epoch*.ckpt")):
         items.append((f"파인튜닝: {p.name}", str(p)))
+    # MSST train.py 결과물: <results_path>/model_<type>_ep_<N>_..._.ckpt
+    for p in sorted(CKPT_DIR.glob("*/model_*.ckpt")):
+        if p.parent.name == "users":
+            continue
+        items.append((f"파인튜닝: {p.parent.name}/{p.name}", str(p)))
     for p in sorted(CKPT_DIR.glob("users/*/finetune_epoch*.ckpt")):
         items.append((f"{p.parent.name}님의 모델: {p.name}", str(p)))
     return items
