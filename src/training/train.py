@@ -24,8 +24,16 @@ from src.utils.config import Config
 from src.utils.device import get_device
 
 
-def train(cfg: Config) -> None:
-    """설정에 따라 Fine-tuning을 수행한다."""
+def train(cfg: Config, on_epoch_end=None) -> Path:
+    """설정에 따라 Fine-tuning을 수행한다.
+
+    Args:
+        cfg: 파이프라인 설정
+        on_epoch_end: 에폭 종료 콜백 (epoch:int, avg_loss:float) — Web UI 진행률 등
+
+    Returns:
+        마지막으로 저장된 체크포인트 경로
+    """
     device = get_device(cfg.inference.device)
 
     # training.resume_from이 지정되면 그 체크포인트에서 재개 (기본은 model.checkpoint)
@@ -83,7 +91,10 @@ def train(cfg: Config) -> None:
 
         avg = running / max(1, total_steps)
         print(f"[epoch {epoch}] avg loss = {avg:.4f}")
-        _save_checkpoint(model, ckpt_dir, epoch, keep_last=3)
+        last_ckpt = _save_checkpoint(model, ckpt_dir, epoch, keep_last=3)
+        if on_epoch_end is not None:
+            on_epoch_end(epoch, avg)
+    return last_ckpt
 
 
 def _forward_vocals(model: torch.nn.Module, mixture: torch.Tensor) -> torch.Tensor:
@@ -98,7 +109,7 @@ def _forward_vocals(model: torch.nn.Module, mixture: torch.Tensor) -> torch.Tens
 
 def _save_checkpoint(
     model: torch.nn.Module, ckpt_dir: Path, epoch: int, keep_last: int = 3
-) -> None:
+) -> Path:
     """에폭 체크포인트 저장 후 최근 keep_last개만 보관 (228M 모델 = 개당 ~0.9GB)."""
     path = ckpt_dir / f"finetune_epoch{epoch}.ckpt"
     torch.save({"epoch": epoch, "state_dict": model.state_dict()}, path)
@@ -108,3 +119,4 @@ def _save_checkpoint(
     )
     for stale in old[:-keep_last]:
         stale.unlink()
+    return path
