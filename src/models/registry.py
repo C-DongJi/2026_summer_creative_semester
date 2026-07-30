@@ -78,7 +78,13 @@ def _load_msst_model(
                 f"체크포인트가 없습니다: {ckpt_path}\n"
                 "`bash scripts/setup_msst.sh` 로 Kim 체크포인트를 내려받으세요."
             )
-        state = torch.load(str(ckpt_path), map_location="cpu", weights_only=False)
+        try:
+            # mmap 로드로 913MB 체크포인트의 일시적 호스트 RAM 2배 점유 방지
+            state = torch.load(
+                str(ckpt_path), map_location="cpu", weights_only=False, mmap=True
+            )
+        except (TypeError, RuntimeError):
+            state = torch.load(str(ckpt_path), map_location="cpu", weights_only=False)
         # MSST 체크포인트는 순수 state_dict 또는 {'state_dict'|'state': ...} 래핑
         for key in ("state_dict", "state"):
             if isinstance(state, dict) and key in state:
