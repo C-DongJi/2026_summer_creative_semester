@@ -19,7 +19,9 @@
 # 메모: - 데이터 변경 후엔 metadata_*.pkl 캐시 삭제 필수 (변경이 조용히 무시됨)
 #       - VRAM 부족 시: 아래 chunk_size를 더 줄이기 전에 MSST 버전이 지원하면
 #         model에 use_torch_checkpoint: true 추가 + optimizer: adamw8bit 시도
-#       - LoRA 폴백: --train_lora_peft (docs/LoRA.md, r=8 alpha=16)
+#       - LoRA 폴백: --train_lora_peft 사용 전 이 파일에 lora: 섹션을 추가해야 함
+#         (peft LoraConfig 인자로 전달됨 — 없으면 KeyError. r: 8, lora_alpha: 16
+#         + target_modules 지정. MSST third_party docs/LoRA.md 참고)
 
 audio:
   chunk_size: 131584        # ~2.98s — T4(16GB)/8GB 안전 프리셋. 여유 확인 후 352800(8s)로 상향
