@@ -11,15 +11,17 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 
 import gradio as gr  # noqa: E402
 
 from src.inference.pipeline import SeparationPipeline  # noqa: E402
 from src.utils.config import load_config  # noqa: E402
 
-CONFIG_PATH = "config/default.yaml"
-OUTPUT_DIR = "outputs"
+# 어느 디렉토리에서 실행해도 동작하도록 리포 루트 기준 절대 경로 사용
+CONFIG_PATH = ROOT / "config" / "default.yaml"
+OUTPUT_DIR = ROOT / "outputs"
 
 # 파이프라인은 무거우므로 1회 로드 후 재사용 (지연 초기화)
 _pipeline: SeparationPipeline | None = None
@@ -39,7 +41,7 @@ def separate(audio_path: str):
     pipeline = get_pipeline()
     paths = pipeline.separate_to_files(audio_path, OUTPUT_DIR)
     vocals = paths.get("vocals")
-    inst = paths.get("instrumental") or paths.get("inst")
+    inst = paths.get("instrumental")
     return (str(vocals) if vocals else None,
             str(inst) if inst else None)
 
