@@ -56,7 +56,9 @@ pip install medleydb
 ```
 
 데이터 자체는 별도로 받아야 한다:
-- **MoisesDB**: https://music.ai/research/ (datasets) 에서 다운로드 후 압축 해제.
+- **MoisesDB**: https://music.ai/research/ (datasets) 에서 다운로드. 80GB 단일 zip이라
+  통째로 풀지 말고 장르만 선별 추출하는 것을 권장 — 방법과 Windows D드라이브 연결은
+  [FINETUNE_MOISESDB.md](FINETUNE_MOISESDB.md) 0단계.
 - **MedleyDB**: Zenodo 승인 요청 — V1 `zenodo.org/record/1649325`, 2.0 `zenodo.org/records/1715175`.
   받은 뒤 `export MEDLEYDB_PATH=/path/to/MedleyDB` (하위에 `Audio/` 폴더).
 
