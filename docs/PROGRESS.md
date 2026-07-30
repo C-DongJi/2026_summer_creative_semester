@@ -1,4 +1,4 @@
-# 주차별 진행 기록 (1~6주차)
+# 주차별 진행 기록
 
 > 신청서(2026-05) 계획 일정 기준. 각 주차의 목표 대비 산출물과 검증 결과를 기록한다.
 
@@ -11,7 +11,7 @@
 - 핵심 근거 9건을 개별 웹 검증으로 확인
 - 산출물: [PIPELINE_DESIGN.md](PIPELINE_DESIGN.md) (선정 근거·하이퍼파라미터·함정 목록)
 
-## 2주차 (6/29) — 개발 환경 세팅 및 베이스라인 구동 테스트 🔺
+## 2주차 (6/29) — 개발 환경 세팅 및 베이스라인 구동 테스트 ✅
 
 - conda 가상환경 `changuihakgi`(Python 3.11) 구축, 전체 폴더/모듈 스캐폴딩
 - [scripts/setup_msst.sh](../scripts/setup_msst.sh): MSST 클론 + Kim 체크포인트(913MB) 자동 설치
@@ -20,7 +20,9 @@
   청크 추론의 피크 VRAM·시간 비교 스크립트 — RoFormer 어텐션 메모리가 길이 제곱으로
   증가함을 근거로 T4(16GB)에서 3~4분 곡 OOM 예상 재원 산정
 - Colab GPU 연결 환경 구축: [COLAB.md](COLAB.md) (VS Code Remote Tunnel, 백그라운드 터널)
-- 🔺 잔여: OOM **실측**은 GPU 세션 ①에서 수행 ([GPU_SESSION1.md](GPU_SESSION1.md) 절차 준비 완료)
+- OOM **실측 완료** (5060 Ti PC): 4분 곡 fp32 일괄 추론이 23.63GB를 요구하며 OOM —
+  "긴 곡 일괄 추론은 소비자용 GPU에서 불가"를 실증. 길이별 상세 측정표는
+  [SCHEDULE.md](SCHEDULE.md) GPU 세션 ① 체크리스트에서 마무리 중
 
 ## 3주차 (7/6) — 분할 추론 아키텍처 설계 (청크 + 크로스페이드) ✅
 
@@ -65,20 +67,34 @@
   — 단일 타깃(vocals) 학습, AMP + gradient accumulation, 체크포인트 저장
 - [src/training/losses.py](../src/training/losses.py): 체크포인트 원 손실인 multi-resolution STFT
   loss 직접 구현 (windows [4096,2048,1024,512,256], hop 147)
-- 검증: 더미 모델 주입 dry-run 3종 통과 (루프 완주·체크포인트 저장·multi-STFT 경로·가중치 업데이트)
+- 검증: 더미 모델 주입 dry-run 테스트 통과 (루프 완주·체크포인트 저장·multi-STFT 경로·가중치 업데이트)
 - 🔺 잔여: 실데이터 확보 후 **실학습 실행**은 GPU 세션 ②에서 수행
+
+## 7주차 (8/3) — Web UI 개발 및 백엔드 연동 🔄 진행 중
+
+- [app/webui.py](../app/webui.py): Gradio 2탭 구성 완성
+  - **분리 탭**: 업로드 → 보컬/반주 분리 → 재생·다운로드. 모델 드롭다운(기본/파인튜닝
+    모델 선택), 작업별 소요 시간 표시, 5060 Ti PC에서 실곡 분리 동작 확인
+  - **재학습 탭**: 사용자별로 (mix, inst) 쌍 업로드 → 데이터셋 축적 → 에폭/lr 지정
+    재학습 → 완료 시 분리 탭 드롭다운에 자동 등록
+- 실험·평가 도구 완비: [scripts/evaluate.py](../scripts/evaluate.py)(다중 모델·평가셋
+  SDR 비교), [scripts/make_report.py](../scripts/make_report.py)(판정 기준 자동 적용
+  보고서 생성), [scripts/extract_moisesdb_subset.py](../scripts/extract_moisesdb_subset.py)
+  (80GB zip에서 장르 선별 추출)
+- 잔여: 재학습 실험 실행([EXPERIMENT.md](EXPERIMENT.md)), 실사용 피드백 반영
 
 ## 요약
 
 | 주차 | 계획일 | 상태 |
 |---|---|---|
 | 1 | 6/26 | ✅ 완료 (모델·프레임워크 확정) |
-| 2 | 6/29 | 🔺 산출물 완료, OOM 실측만 GPU 대기 |
+| 2 | 6/29 | ✅ 완료 (환경 세팅 + OOM 실측) |
 | 3 | 7/6 | ✅ 완료 (Overlap-Add 구현·검증) |
 | 4 | 7/13 | ✅ 완료 (1차 추론 파이프라인 E2E) |
 | 5 | 7/20 | ✅ 완료 (전처리·Dataset·점검 도구) |
 | 6 | 7/27 | 🔺 환경 완비, 실학습만 GPU 대기 |
-| 7 | 8/3 | 진행 중 — Web UI 개발·백엔드 연동 |
+| 7 | 8/3 | 🔄 진행 중 — Web UI 구현 완료, 실험 도구 완비 |
 | 8 | 8/7 | 예정 — 통합 디버깅·문서화·최종 보고서 |
 
-테스트 스위트: 15/15 통과 (청크 3 · 손실 4 · 인제스트 5 · 학습 루프 3)
+테스트 스위트: 39/39 통과 (청크 7 · 손실 4 · 인제스트 6 · 학습 루프 4 · 지표 5 ·
+웹 UI 헬퍼 5 · 디바이스 4 · 보고서 4)
