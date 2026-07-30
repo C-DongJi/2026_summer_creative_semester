@@ -59,13 +59,19 @@ class SeparationPipeline:
         Returns:
             {"vocals": [C, T], "instrumental": [C, T]}
         """
-        mixture, sr = load_audio(
+        mixture, _sr = load_audio(
             input_path,
             target_sr=self.sample_rate,
             target_channels=self.cfg.audio.channels,
         )
+        return self.separate_waveform(mixture)
 
-        chunk_samples = int(self.cfg.inference.chunk_seconds * sr)
+    def separate_waveform(self, mixture: torch.Tensor) -> dict[str, torch.Tensor]:
+        """이미 로드된 waveform[C, T] (규격: sample_rate/channels)을 분리한다.
+
+        평가 스크립트처럼 스템 합으로 재구성한 mixture를 직접 넣을 때 사용.
+        """
+        chunk_samples = int(self.cfg.inference.chunk_seconds * self.sample_rate)
         estimates = chunked_inference(
             mixture,
             process_fn=self._model_forward,
