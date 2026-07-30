@@ -105,7 +105,22 @@ python scripts/evaluate.py \
 평균이 애매하면(트랙별 분산 ±2dB) **향상 곡 비율**(페어드 비교의 "향상 N/M곡")로
 판단한다.
 
-## 5. 보고서 기록
+## 5. 보고서 생성 (자동)
+
+평가 JSON에서 보고서 파일을 자동으로 만든다 — 요약 표, 페어드 비교,
+기준표 자동 판정, 청취 기록란, 트랙별 부록 포함:
+
+```bash
+python scripts/make_report.py --results outputs/eval_pop_ft.json \
+    --target-set pop --experiment-name pop-ft-01 \
+    --train-data "MoisesDB pop N곡" --epochs-lr "30 / 1e-5"
+# -> outputs/report_pop-ft-01.md
+```
+
+생성된 .md는 그대로 제출하거나 최종 보고서(한글/워드)에 붙여넣는다.
+청취 평가 표(4절)만 수동으로 채우면 된다.
+
+수동 기록용 요약 행 형식 (자동 보고서에도 동일 수치가 있음):
 
 ```
 | 실험 | 학습 데이터 | 에폭/lr | A: pop Δ | B: others Δ | 향상률(A) | 판정 |
