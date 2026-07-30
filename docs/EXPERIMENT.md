@@ -12,8 +12,10 @@
 
 ## 0. 데이터 확보 (1회, 사람이 직접)
 
-https://music.ai/research/ 에서 MoisesDB 신청·다운로드 → 압축 해제.
-아래에서 압축 해제 경로를 `<MOISESDB>`로 표기한다.
+https://music.ai/research/ 에서 MoisesDB 신청·다운로드. 80GB zip이므로 통째로 풀지
+말고 필요한 장르만 선별 추출한다 — 추출 방법과 Windows D드라이브 연결(`/mnt/d`)은
+[FINETUNE_MOISESDB.md](FINETUNE_MOISESDB.md) 0단계 참고.
+아래에서 추출(압축 해제) 경로를 `<MOISESDB>`로 표기한다.
 
 ```bash
 pip install git+https://github.com/moises-ai/moises-db.git   # 1회
@@ -88,8 +90,8 @@ python scripts/evaluate.py \
 ```
 
 출력 두 가지를 그대로 기록한다:
-- `=== 평균 SDR ===` 표: 평가셋 × 모델의 vocals/inst 평균
-- `=== 페어드 비교 ===`: 평가셋별 평균 Δ, 향상 곡 수, 최대/최소 Δ
+- `=== 평균 SDR (dB) ===` 표: 평가셋 × 모델의 vocals/inst 평균
+- `=== 페어드 비교: pop_ft − base ===`: 평가셋별 평균 Δ, 향상 곡 수, 최대/최소 Δ
 
 ## 4. 결과 해석 및 판정
 
@@ -140,6 +142,7 @@ python scripts/make_report.py --results outputs/eval_pop_ft.json \
 - **에폭별 추이**: `--model ep10=... --model ep30=... --model best=...`로
   한 번에 비교해 과적합 시점 파악
 - **판정이 ⚠️/❌일 때 재시도 우선순위**: lr 1e-5 → 5e-6 → 에폭 절반 →
-  학습셋에 타 장르 20% 혼합 → LoRA(`--train_lora_peft`)
+  학습셋에 타 장르 20% 혼합 → LoRA(`--train_lora_peft`, 사용 전 config에
+  `lora:` 섹션 추가 필요 — msst_finetune.yaml 상단 주석 참고)
 - **외부 표준셋(C)**: MUSDB18-HQ test 50곡으로 같은 평가를 반복하면 공개
   리더보드와 비교 가능한 수치를 얻는다 (변환 스크립트 필요 시 요청)
