@@ -50,7 +50,7 @@ python scripts/extract_moisesdb_subset.py --zip moisesdb.zip --genres rock jazz 
 변환(2단계)까지 끝나면 zip은 외장하드로 옮기거나 삭제해도 된다
 (최종 점유: 변환된 2-stem 데이터 ~수 GB).
 
-3. 압축 해제(또는 추출) 경로를 config에 기록해 두면 이후 명령이 짧아진다:
+추출이 끝나면 그 경로를 config에 기록해 두면 이후 명령이 짧아진다:
    ```yaml
    # config/default.yaml
    public_datasets:
@@ -129,8 +129,10 @@ MoisesDB처럼 스템이 이미 분리된 데이터는 경로 A/B가 적합하�
 
 ## 5. 결과 사용
 
-- 파인튜닝 체크포인트를 `models/checkpoints/`(또는 `users/<이름>/`) 아래에 두면
-  **Web UI의 모델 드롭다운에 자동으로 나타난다** → 선택해서 분리 품질 비교
+- 파인튜닝 체크포인트는 **Web UI의 모델 드롭다운에 자동으로 나타난다** →
+  선택해서 분리 품질 비교. 인식되는 위치: MSST 결과물은
+  `models/checkpoints/<폴더>/model_*.ckpt`, 자체 루프/웹 재학습 결과는
+  `models/checkpoints/finetune_epoch*.ckpt` 및 `users/<이름>/finetune_epoch*.ckpt`
 - CLI 비교: `config/default.yaml`의 `model.checkpoint`를 새 경로로 바꾸고
   `python scripts/separate.py --input <곡>` 실행
 - 평가: **재학습 장르 + 타 장르를 함께** SDR로 비교해 향상과 부작용(망각)을 동시에
