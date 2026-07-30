@@ -25,7 +25,8 @@ inference:
   fade: hann                # 경계 크로스페이드: hann | linear
   batch_size: 1             # 한 번에 추론할 청크 수 — VRAM 여유 시 2~4로 상향(처리량 증가)
   precision: auto           # auto | fp16 | bf16 | fp32 — CUDA에서 반정밀 추론(VRAM 절반)
-                            # auto: Ampere+는 bf16, T4 등은 fp16, CPU는 fp32
+                            # auto: CUDA는 fp16, CPU는 fp32.
+                            # bf16은 이 모델의 복소 변환(view_as_complex)이 미지원 — 쓰지 말 것
 
 # 재학습 (Fine-tuning) — 자체 루프(src/training/train.py)용.
 # 기본 경로는 MSST train.py 사용 권장 (docs/PIPELINE_DESIGN.md Mode 2 참고)
