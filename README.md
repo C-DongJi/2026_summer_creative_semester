@@ -36,6 +36,7 @@ GPU 작업(OOM 테스트, 파인튜닝)은 Colab 또는 GPU PC에서 진행합�
 - Colab 연결: [docs/COLAB.md](docs/COLAB.md) / 검증 절차: [docs/GPU_SESSION1.md](docs/GPU_SESSION1.md)
 - RTX 5060 Ti PC 세팅: [docs/SETUP_GPU_PC.md](docs/SETUP_GPU_PC.md) (50시리즈는 CUDA 12.8 빌드 필수)
 - MoisesDB 장르 선택 재학습: [docs/FINETUNE_MOISESDB.md](docs/FINETUNE_MOISESDB.md)
+- 재학습 효과 평가 실험: [docs/EVALUATION.md](docs/EVALUATION.md) (`scripts/evaluate.py`)
 
 ## 사용법
 
