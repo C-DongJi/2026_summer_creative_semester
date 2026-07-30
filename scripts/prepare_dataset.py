@@ -31,11 +31,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="공개 데이터셋 -> 2-stem 학습셋 변환")
     parser.add_argument("--dataset", required=True, choices=["moisesdb", "medleydb"])
     parser.add_argument("--config", default="config/default.yaml")
-    parser.add_argument("--src", default=None, help="MoisesDB 데이터 경로 (medleydb는 MEDLEYDB_PATH 사용)")
+    parser.add_argument("--src", default=None, help="MoisesDB 데이터 경로 (기본: config public_datasets.moisesdb_dir)")
     parser.add_argument("--out", default=None, help="학습셋 출력 (기본: config data.processed_dir)")
     parser.add_argument("--valid-dir", default=None, help="검증셋 출력 (기본: config data.valid_dir)")
-    parser.add_argument("--holdout-frac", type=float, default=0.1, help="검증셋 비율 (결정적 분리)")
-    parser.add_argument("--versions", nargs="+", default=["V1", "V2"], help="MedleyDB 버전")
+    parser.add_argument("--holdout-frac", type=float, default=None,
+                        help="검증셋 비율 (기본: config public_datasets.holdout_frac)")
+    parser.add_argument("--versions", nargs="+", default=None,
+                        help="MedleyDB 버전 (기본: config public_datasets.medleydb_versions)")
     parser.add_argument("--include-speech", action="store_true", help="MedleyDB: speaker/crowd도 보컬로")
     parser.add_argument("--keep-bleed", action="store_true", help="MedleyDB: has_bleed 트랙도 포함")
     parser.add_argument("--genres", nargs="+", default=None,
@@ -43,10 +45,24 @@ def main() -> None:
     args = parser.parse_args()
 
     cfg = load_config(args.config)
+    pub = getattr(cfg, "public_datasets", None)
     sr = cfg.audio.sample_rate
     channels = cfg.audio.channels
     out_dir = Path(args.out or cfg.data.processed_dir)
     valid_dir = Path(args.valid_dir or cfg.data.valid_dir)
+    # CLI 미지정 시 config public_datasets 섹션의 기본값 사용
+    if args.src is None and pub is not None:
+        args.src = pub.moisesdb_dir
+    if args.versions is None:
+        args.versions = list(pub.medleydb_versions) if pub is not None else ["V1", "V2"]
+    if args.holdout_frac is None:
+        args.holdout_frac = pub.holdout_frac if pub is not None else 0.1
+    include_speech = args.include_speech or bool(
+        pub is not None and pub.medleydb_include_speech
+    )
+    drop_bleed = (not args.keep_bleed) and bool(
+        pub is None or pub.medleydb_drop_bleed
+    )
 
     if args.dataset == "moisesdb":
         if not args.src:
@@ -59,8 +75,8 @@ def main() -> None:
         from src.data.medleydb_ingest import iter_medleydb_pairs
         pairs = iter_medleydb_pairs(
             versions=args.versions,
-            include_speech=args.include_speech,
-            drop_bleed=not args.keep_bleed,
+            include_speech=include_speech,
+            drop_bleed=drop_bleed,
             sample_rate=sr,
             channels=channels,
             genres=args.genres,
