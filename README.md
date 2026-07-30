@@ -32,8 +32,10 @@ pip install -r requirements.txt
 bash scripts/setup_msst.sh    # MSST 클론 + Kim 체크포인트(약 913MB) 다운로드
 ```
 
-GPU 작업(OOM 테스트, 파인튜닝)은 Colab에서 진행합니다. 연결 방법은
-[docs/COLAB.md](docs/COLAB.md), 검증 절차는 [docs/GPU_SESSION1.md](docs/GPU_SESSION1.md)에 있습니다.
+GPU 작업(OOM 테스트, 파인튜닝)은 Colab 또는 GPU PC에서 진행합니다.
+- Colab 연결: [docs/COLAB.md](docs/COLAB.md) / 검증 절차: [docs/GPU_SESSION1.md](docs/GPU_SESSION1.md)
+- RTX 5060 Ti PC 세팅: [docs/SETUP_GPU_PC.md](docs/SETUP_GPU_PC.md) (50시리즈는 CUDA 12.8 빌드 필수)
+- MoisesDB 장르 선택 재학습: [docs/FINETUNE_MOISESDB.md](docs/FINETUNE_MOISESDB.md)
 
 ## 사용법
 
@@ -54,7 +56,7 @@ python scripts/check_dataset.py --dir data/processed   # 변환 결과 점검
 # 파인튜닝 (자체 학습 루프)
 python scripts/train.py --config config/default.yaml
 
-# Web UI
+# Web UI — 분리 + 사용자별 재학습 탭 (--host 0.0.0.0 이면 다른 기기에서 접속 가능)
 python app/webui.py
 
 # 테스트
