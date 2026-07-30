@@ -5,8 +5,6 @@
 파이프라인으로 만들고, 직접 모은 음원으로 파인튜닝까지 해보는 것이 목표입니다.
 
 - 팀: 이준영, 안준석 (인공지능학과) / 지도교수: 신승협
-- 모델 선정 이유와 전체 설계: [docs/PIPELINE_DESIGN.md](docs/PIPELINE_DESIGN.md)
-- 주차별 진행 기록: [docs/PROGRESS.md](docs/PROGRESS.md)
 
 ## 프로젝트 소개
 
@@ -32,12 +30,8 @@ pip install -r requirements.txt
 bash scripts/setup_msst.sh    # MSST 클론 + Kim 체크포인트(약 913MB) 다운로드
 ```
 
-GPU 작업(OOM 테스트, 파인튜닝)은 Colab 또는 GPU PC에서 진행합니다.
-- Colab 연결: [docs/COLAB.md](docs/COLAB.md) / 검증 절차: [docs/GPU_SESSION1.md](docs/GPU_SESSION1.md)
-- RTX 5060 Ti PC 세팅: [docs/SETUP_GPU_PC.md](docs/SETUP_GPU_PC.md) (50시리즈는 CUDA 12.8 빌드 필수)
-- MoisesDB 장르 선택 재학습: [docs/FINETUNE_MOISESDB.md](docs/FINETUNE_MOISESDB.md)
-- 재학습 실험 절차서 (준비→학습→평가→결과): [docs/EXPERIMENT.md](docs/EXPERIMENT.md)
-- 평가 설계·판정 기준: [docs/EVALUATION.md](docs/EVALUATION.md) (`scripts/evaluate.py`)
+GPU 작업(OOM 테스트, 파인튜닝)은 RTX 5060 Ti PC에서 진행하고, Colab은 백업으로
+씁니다. 환경별 세팅 절차는 아래 [문서 안내](#문서-안내)에서 찾으면 됩니다.
 
 ## 사용법
 
@@ -58,8 +52,14 @@ python scripts/check_dataset.py --dir data/processed   # 변환 결과 점검
 # 파인튜닝 (자체 학습 루프)
 python scripts/train.py --config config/default.yaml
 
-# Web UI — 분리 + 사용자별 재학습 탭 (--host 0.0.0.0 이면 다른 기기에서 접속 가능)
+# Web UI: 분리 + 사용자별 재학습 탭 (--host 0.0.0.0 이면 다른 기기에서 접속 가능)
 python app/webui.py
+
+# 파인튜닝 효과 평가 (base vs 파인튜닝, 장르별 SDR 비교) + 보고서 자동 생성
+python scripts/evaluate.py --eval-set pop=data/eval/pop \
+    --model base=models/checkpoints/MelBandRoformer.ckpt \
+    --model ft=models/checkpoints/finetune_pop/best.ckpt --output outputs/eval.json
+python scripts/make_report.py --results outputs/eval.json --target-set pop
 
 # 테스트
 python -m pytest tests/ -v
@@ -95,7 +95,7 @@ python -m pytest tests/ -v
 | 주차 | 일시 | 내용 | 현황 |
 |:---:|:---:|---|:---:|
 | 1 | 6/26 | SOTA 논문 리뷰, 모델·프레임워크 선정 | 완료 |
-| 2 | 6/29 | 개발 환경 세팅, 베이스라인 구동, OOM 한계 테스트 | 완료* |
+| 2 | 6/29 | 개발 환경 세팅, 베이스라인 구동, OOM 한계 테스트 | 완료 |
 | 3 | 7/6 | 청크 분할 추론 + 크로스페이드(Overlap-Add) 구현 | 완료 |
 | 4 | 7/13 | 오디오 I/O 모듈, 1차 추론 파이프라인 완성 | 완료 |
 | 5 | 7/20 | 커스텀 데이터 전처리, Dataset/DataLoader | 완료 |
@@ -103,5 +103,23 @@ python -m pytest tests/ -v
 | 7 | 8/3 | Web UI 개발, 백엔드 연동 | 진행 중 |
 | 8 | 8/7 | 통합 디버깅, 문서화, 최종 보고서 | 예정 |
 
-\* 2·6주차의 GPU 실측(OOM 측정, 실제 파인튜닝 실행)은 Colab GPU 세션에서 진행합니다.
+\* 6주차의 실제 파인튜닝 실행(GPU 학습)은 데이터 확보 후 GPU PC에서 진행합니다.
 자세한 내용은 [docs/PROGRESS.md](docs/PROGRESS.md) 참고.
+
+## 문서 안내
+
+자세한 내용은 docs 폴더에 용도별로 나뉘어 있습니다.
+전체 지도와 읽는 순서는 [docs/README.md](docs/README.md)에 있습니다.
+
+| 하려는 일 | 문서 |
+|---|---|
+| 모델 선정 이유와 전체 설계 | [docs/PIPELINE_DESIGN.md](docs/PIPELINE_DESIGN.md) |
+| 주차별 진행 기록 | [docs/PROGRESS.md](docs/PROGRESS.md) |
+| 남은 작업 계획, GPU 세션 체크리스트 | [docs/SCHEDULE.md](docs/SCHEDULE.md) |
+| RTX 5060 Ti PC 세팅 (CUDA 12.8 빌드 필수) | [docs/SETUP_GPU_PC.md](docs/SETUP_GPU_PC.md) |
+| 세팅 후 기능 테스트 | [docs/TESTING.md](docs/TESTING.md) |
+| 데이터셋 조사, 라이선스, 2-stem 변환 원리 | [docs/DATASETS.md](docs/DATASETS.md) |
+| MoisesDB 장르 선택 재학습 (80GB 대응 포함) | [docs/FINETUNE_MOISESDB.md](docs/FINETUNE_MOISESDB.md) |
+| 재학습 실험 절차 (준비, 학습, 평가, 보고서) | [docs/EXPERIMENT.md](docs/EXPERIMENT.md) |
+| 평가 설계와 판정 기준 | [docs/EVALUATION.md](docs/EVALUATION.md) |
+| Colab GPU 연결 (백업 환경) | [docs/COLAB.md](docs/COLAB.md), [docs/GPU_SESSION1.md](docs/GPU_SESSION1.md) |
