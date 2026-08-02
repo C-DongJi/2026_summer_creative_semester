@@ -52,10 +52,15 @@ ls data/train_pop | wc -l; ls data/eval/pop | wc -l; ls data/eval/others | wc -l
 
 학습셋이 30곡 미만이면 `--genres pop singer-songwriter`처럼 인접 장르를 합친다.
 
-## 2. 파인튜닝 실행 (수 시간)
+## 2. 파인튜닝 실행 (수 시간, 자동 중단 포함)
+
+MSST train.py에는 조기 종료가 없어 정체돼도 계속 돌기 때문에, 감시 래퍼를
+붙여 실행한다 — valid SDR이 `--patience` 에폭 연속 갱신되지 않으면 자동으로
+멈추고, 로그 저장과 종료 시 베스트 체크포인트 경로 출력까지 해준다:
 
 ```bash
-python third_party/Music-Source-Separation-Training/train.py \
+python scripts/train_autostop.py --patience 5 --log outputs/train_pop.log -- \
+  python third_party/Music-Source-Separation-Training/train.py \
   --model_type mel_band_roformer \
   --config_path config/msst_finetune.yaml \
   --start_check_point models/checkpoints/MelBandRoformer.ckpt \
@@ -67,11 +72,11 @@ python third_party/Music-Source-Separation-Training/train.py \
 
 - 16GB 카드면 시작 전에 `config/msst_finetune.yaml`의 `audio.chunk_size`를
   352800으로 올려도 된다 (OOM 나면 131584로 복귀)
-- 에폭마다 출력되는 **valid SDR을 지켜본다**: 3~5에폭 연속 정체/하락하면 중단(Ctrl+C).
+- 베스트 체크포인트는 갱신 시점마다 저장되므로 자동 중단으로 잃는 것은 없다.
   소규모 데이터는 보통 수십 에폭 내 수렴
+- 래퍼 없이 돌리려면 `--` 뒤의 명령만 실행하고 valid SDR을 직접 지켜보다
+  정체 시 Ctrl+C (로그는 명령 끝에 `2>&1 | tee outputs/train_pop.log`)
 - 데이터를 바꿔 재실행할 땐 `metadata_*.pkl` 캐시 삭제 필수
-- 중간 이탈 대비: 학습 로그(에폭별 valid SDR)를 파일로 남기려면 명령 끝에
-  `2>&1 | tee outputs/train_pop.log`
 
 완료되면 `models/checkpoints/finetune_pop/` 안의 **valid SDR이 가장 높았던
 체크포인트**를 고른다 (파일명에 SDR이 붙는다). 아래에서 `<BEST>`로 표기.
