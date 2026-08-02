@@ -52,6 +52,9 @@ pip install -r /tmp/msst_requirements_filtered.txt
 # pkg_resources를 임포트한다 → setuptools를 81 미만으로 고정
 pip install "setuptools<81"
 
+# 단일 스템(보컬 전용) 학습 시 내부 손실 경로가 깨지는 MSST 버그 패치 (멱등)
+python "$(dirname "$0")/patch_msst.py"
+
 echo "완료. 다음으로:"
 echo "  추론 테스트:  python scripts/separate.py --input <곡.mp3> --output outputs/"
 echo "  파인튜닝:     docs/PIPELINE_DESIGN.md Mode 2 참고"
