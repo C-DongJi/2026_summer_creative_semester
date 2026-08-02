@@ -174,6 +174,8 @@ Web UI 드롭다운에 자동으로 나타난다 (자체 루프 결과 `finetune
 | 체크포인트 다운로드 중단 | `bash scripts/setup_msst.sh` 재실행(이어받기). "다운로드 불완전" 메시지가 나오면 한 번 더 |
 | 학습 OOM | 6단계 프리셋 표의 낮은 사양 열 적용 (chunk_size ↓ → adamw8bit → LoRA) |
 | MSST 학습이 데이터 변경을 무시 | `metadata_*.pkl` 캐시 삭제 후 재실행 |
+| 학습 시작 직후 `EinopsError ... expected 4 dims. Received 3-dim tensor` | MSST의 단일 스템 학습 버그. `git pull` 후 `python scripts/patch_msst.py` 실행하고 재시도 |
+| 학습 시작 시 `ImportError ... wandb` | wandb가 protobuf와 어긋남. `pip install -U wandb` (그래도 안 되면 `pip install -U wandb protobuf`) |
 | Web UI가 다른 기기에서 안 열림 | `--host 0.0.0.0`으로 실행했는지, Windows 방화벽 7860 인바운드 허용했는지 확인 |
 
 ## 10. 협업 규칙 (git)
