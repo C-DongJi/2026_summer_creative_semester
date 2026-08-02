@@ -74,7 +74,7 @@ training:
   patience: 1000                    # 소규모 데이터에서 조기 lr 붕괴 방지 (원본 2)
   reduce_factor: 0.95
   target_instrument: vocals
-  num_epochs: 1000                  # 홀드아웃 SDR 정체 시 수동 중단
+  num_epochs: 1000                  # 정체 시 중단은 scripts/train_autostop.py 래퍼 사용
   num_steps: 1000
   # ⚠️ 아래 augmentation* 키들은 원본 config 호환용으로 유지하지만, 현재 MSST
   # 체크아웃에서는 읽히지 않는 죽은 키다(신버전은 별도 augmentations: 섹션 사용).
