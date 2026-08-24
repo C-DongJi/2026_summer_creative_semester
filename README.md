@@ -85,11 +85,6 @@ python -m pytest tests/ -v
 └── third_party/       # MSST 체크아웃 (setup_msst.sh로 설치)
 ```
 
-## 역할 분담
-
-- **이준영**: 모델 조사·선정, 청크 분할 추론 + Overlap-Add 구현, 자체 학습 루프 작성
-- **안준석**: 오디오 I/O와 전처리, Dataset/DataLoader, Web UI 및 백엔드 연동
-
 ## 진행 일정
 
 | 주차 | 일시 | 내용 | 현황 |
